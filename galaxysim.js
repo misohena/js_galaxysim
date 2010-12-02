@@ -111,27 +111,64 @@ if(typeof Misohena.galaxysim == "undefined"){
         }
     }
 
+    function removeDestroyed(objects)
+    {
+        var i;
+        for(i = 0; i < objects.length; ++i){
+            if(objects[i].isDestroyed()){
+                break;
+            }
+        }
+        if(i == objects.length){
+            return;
+        }
+        var j = i;
+        for(++i; i < objects.length; ++i){
+            if(!objects[i].isDestroyed()){
+                objects[j++] = objects[i];
+            }
+        }
+        objects.length = j;
+    }
+
     function stepSpaceTime(space, dt)
     {
         applyGravityAll(space.objects);
+        removeDestroyed(space.objects);
         space.objects.forEach(function(o){stepObject(o, dt);});
     }
 
-    function createSun()
+    function createSpaceSolarSystem()
     {
-        return new SpaceObject(1.9891e30, 6.96e8, Vector.newZero());
+        var space = new Space();
+        // Sun
+        space.addObject(new SpaceObject(1.9891e30, 6.96e8, Vector.newZero()));
+        // Mercury
+        space.addObject(new SpaceObject(3.302e23, 4879400/2, Vector.newOnX(57910000000), Vector.newOnY(47872.5)));
+        // Venus
+        space.addObject(new SpaceObject(4.869e24, 12103600/2, Vector.newOnX(108208930000), Vector.newOnY(35021.4)));
+        // Earth
+        space.addObject(new SpaceObject(5.9736e24, 6.356752e3, Vector.newOnX(1.49597870e11), Vector.newOnY(29780)));
+        // Mars
+        space.addObject(new SpaceObject(6.419e23, 6794400/2, Vector.newOnX(227936640000), Vector.newOnY(24130.9)));
+        // Jupiter
+        space.addObject(new SpaceObject(1.899e27, 142984000/2, Vector.newOnX(778412010000), Vector.newOnY(13069.7)));
+        // Saturn
+        space.addObject(new SpaceObject(5.688e26, 120536000/2, Vector.newOnX(1426725400000), Vector.newOnY(9672.4)));
+        // Uranus
+        //space.addObject(new SpaceObject(, , Vector.newOnX(), Vector.newOnY()));
+        // Neptune
+        //space.addObject(new SpaceObject(, , Vector.newOnX(), Vector.newOnY()));
+        return space;
     }
-    function createEarth()
-    {
-        return new SpaceObject(5.9736e24, 6.356752e3, Vector.newOnX(1.49597870e11), Vector.newOnY(29780))
-    }
+    
     function createObjectRandom()
     {
-        var radius = 1e4 + Math.random() * 6.96e5;
+        var radius = 1e4 + Math.random() * 6.96e8;
         var mass = radius*radius*radius*1e3;
         return new SpaceObject(
             mass, radius,
-            Vector.newXY(Math.random()*2.0e11*(Math.random()<0.5 ? 1 : -1), Math.random()*2.0e11*(Math.random()<0.5 ? 1 : -1)),
+            Vector.newXY(Math.random()*8.0e11*(Math.random()<0.5 ? 1 : -1), Math.random()*8.0e11*(Math.random()<0.5 ? 1 : -1)),
             Vector.newXY(Math.random()*29780*(Math.random()<0.5 ? 1 : -1), Math.random()*29780*(Math.random()<0.5 ? 1 : -1))
         );
     }
@@ -139,9 +176,7 @@ if(typeof Misohena.galaxysim == "undefined"){
     function createSpace()
     {
         var space = new Space();
-        space.addObject(createSun());
-        //space.addObject(createEarth());
-        for(var i = 0; i < 100; ++i){
+        for(var i = 0; i < 50; ++i){
             space.addObject(createObjectRandom());
         }
         /*
@@ -151,15 +186,19 @@ if(typeof Misohena.galaxysim == "undefined"){
         return space;
     }
 
+    
     function drawSpace(cv, space)
     {
         var ctx = cv.getContext("2d");
         var width = cv.width;
         var height = cv.height;
-        var scale = (width/2)/2.0e11;
+        var scale = (width/2)/2.0e12;
 
-        ctx.clearRect(0, 0, width, height);
+        //ctx.clearRect(0, 0, width, height);
+        ctx.fillStyle = "rgba(0,0,0,0.01)";
+        ctx.fillRect(0, 0, width, height);
         
+        ctx.fillStyle = "rgb(255,255,255)";
         space.objects.forEach(function(o){
             if(o.isDestroyed()){
                 return;
@@ -168,7 +207,7 @@ if(typeof Misohena.galaxysim == "undefined"){
             var y = height/2 - o.position[1] * scale;
             ctx.beginPath();
             ctx.arc(x, y, 1, 0, 2*Math.PI, false);
-            ctx.stroke();
+            ctx.fill();
         });
 
     }
@@ -182,11 +221,12 @@ if(typeof Misohena.galaxysim == "undefined"){
         document.body.appendChild(cv);
 
         var space = createSpace();
+        //var space = createSpaceSolarSystem();
 
         drawSpace(cv, space);
 
         setInterval(function(){
-            stepSpaceTime(space, 3600*12);
+            stepSpaceTime(space, 3600*24*5);
             drawSpace(cv, space);
         }, 100);
     }
