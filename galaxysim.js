@@ -1,32 +1,69 @@
 // -*- coding: utf-8 -*-
 
-if(typeof Misohena == "undefined"){
-    Misohena = {};
-}
-if(typeof Misohena.galaxysim == "undefined"){
-    Misohena.galaxysim = {};
-}
-
 (function(){
+    function package(){
+        var t = this;
+        for(var i = 0; i < arguments.length; ++i){
+            t = t[arguments[i]] || (t[arguments[i]]={});
+        }
+        return t;
+    }
+    var thispkg = package("Misohena", "galaxysim");
+
     var G = 6.67259e-11;
-    var thispkg = Misohena.galaxysim;
 
     var Vector = {
         newZero: function(){ return [0, 0];},
         newOnX: function(x){ return [x, 0];},
         newOnY: function(y){ return [0, y];},
         newXY: function(x, y){ return [x, y];},
-        sub: function(a, b){ return [a[0] - b[0], a[1] - b[1]];},
-        add: function(a, b){ return [a[0] + b[0], a[1] + b[1]];},
-        mul: function(a, b){ return [a*b[0], a*b[1]];},
-        subTo: function(dst, a, b){ dst[0] = a[0] - b[0]; dst[1] = a[1] - b[1];},
-        addTo: function(dst, a, b){ dst[0] = a[0] + b[0]; dst[1] = a[1] + b[1];},
-        mulTo: function(dst, a, b){ dst[0] = a*b[0]; dst[1] = a*b[1];},
+        sub: function(a, b, dst){
+            if(dst){
+                dst[0] = a[0] - b[0];
+                dst[1] = a[1] - b[1];
+                return dst;
+            }
+            else{
+                return [a[0] - b[0], a[1] - b[1]];
+            }
+        },
+        add: function(a, b, dst){
+            if(dst){
+                dst[0] = a[0] + b[0];
+                dst[1] = a[1] + b[1];
+                return dst;
+            }
+            else{
+                return [a[0] + b[0], a[1] + b[1]];
+            }
+        },
+        mul: function(s, b, dst){
+            if(dst){
+                dst[0] = s*b[0];
+                dst[1] = s*b[1];
+            }
+            else{
+                return [s*b[0], s*b[1]];
+            }
+        },
+        addMul: function(a, s, b, dst){
+            if(dst){
+                dst[0] = a[0] + s*b[0];
+                dst[1] = a[1] + s*b[1];
+                return dst;
+            }
+            else{
+                return [a[0] + s*b[0], a[1] + s*b[1]];
+            }
+        },
         lengthSq: function(v) { return v[0]*v[0] + v[1]*v[1];},
         length: function(v) { return Math.sqrt(v[0]*v[0] + v[1]*v[1]);},
-        setZero: function(v) { v[0] = v[1] = 0;}
+        setZero: function(v) { v[0] = v[1] = 0;},
+        getX: function(v) { return v[0];},
+        getY: function(v) { return v[1];}
     };
-    
+
+    // class SpaceObject
     var SpaceObject = thispkg.SpaceObject = function(mass, radius, pos, vel){
         this.mass = mass;
         this.radius = radius;
@@ -36,9 +73,6 @@ if(typeof Misohena.galaxysim == "undefined"){
         this.force = Vector.newZero();
     };
     SpaceObject.prototype = {
-        addForce: function(f) {
-            Vector.addTo(this.force, this.force, f);
-        },
         destroy: function(){
             this.mass = 0;
             this.radius = 0;
@@ -65,48 +99,59 @@ if(typeof Misohena.galaxysim == "undefined"){
             ///@todo
             // acceleration
             // force
+        },
+        move: function(dt){
+            if(this.isDestroyed()){return;}
+            
+            Vector.mul(1.0/this.mass, this.force,  this.acceleration);
+            Vector.setZero(this.force);
+            
+            Vector.addMul(this.velocity, dt, this.acceleration,  this.velocity);
+            Vector.addMul(this.position, dt, this.velocity,  this.position);
         }
     };
 
-    function stepObject(o, dt)
-    {
-        if(o.mass <= 0){
-            return;
-        }
-        Vector.mulTo(o.acceleration, 1.0/o.mass, o.force);
-        Vector.addTo(o.velocity, o.velocity, Vector.mul(dt, o.acceleration));
-        Vector.addTo(o.position, o.position, Vector.mul(dt, o.velocity));
-        Vector.setZero(o.force);
-    }
-    
+    // class Space
     var Space = thispkg.Space = function(){
         this.objects = [];
     };
     Space.prototype = {
-        addObject: function(o) { this.objects.push(o);}
+        addObject: function(o) { this.objects.push(o);},
+        step: function(dt) {
+            resolveMultipleBodyProblem(this.objects);
+            removeDestroyed(this.objects);
+            this.objects.forEach(function(o){o.move(dt);});
+        },
     };
 
-    function applyGravity(o1, o2)
+    function resolveTwoBodyProblem(o1, o2)
     {
+        //if(o1.isDestroyed() || o2.isDestroyed()){ return; }
+        // compute distance.
         var v = Vector.sub(o2.position, o1.position);
         var r = Vector.length(v);
-        if(r < o1.radius + o2.radius){
-            o1.merge(o2);
+        
+        // collision
+        if(r <= o1.radius + o2.radius){
+            o1.merge(o2); ///@todo 半径が大きくなるので、すでに処理したものの中にぶつかるものが出るかもしれない。
             o2.destroy();
             return;
         }
-        
+
+        // gravity
         var fpr = G * o1.mass * o2.mass / (r*r*r);
-        o1.addForce(Vector.mul( fpr, v));
-        o2.addForce(Vector.mul(-fpr, v));
+        Vector.addMul(o1.force,  fpr, v,  o1.force);
+        Vector.addMul(o2.force, -fpr, v,  o2.force);
     }
 
-    function applyGravityAll(objects)
+    function resolveMultipleBodyProblem(objects)
     {
         var i, j;
         for(i = 0; i < objects.length; ++i){
+            if(objects[i].isDestroyed()){ continue; }
             for(j = i+1; j < objects.length; ++j){
-                applyGravity(objects[i], objects[j]);
+                if(objects[j].isDestroyed()){ continue; }
+                resolveTwoBodyProblem(objects[i], objects[j]);
             }
         }
     }
@@ -131,13 +176,9 @@ if(typeof Misohena.galaxysim == "undefined"){
         objects.length = j;
     }
 
-    function stepSpaceTime(space, dt)
-    {
-        applyGravityAll(space.objects);
-        removeDestroyed(space.objects);
-        space.objects.forEach(function(o){stepObject(o, dt);});
-    }
-
+    
+    //
+    
     function createSpaceSolarSystem()
     {
         var space = new Space();
@@ -162,37 +203,80 @@ if(typeof Misohena.galaxysim == "undefined"){
         return space;
     }
     
-    function createObjectRandom()
+    function createSpaceRandom()
     {
-        var radius = 1e4 + Math.random() * 6.96e8;
-        var mass = radius*radius*radius*1e3;
-        return new SpaceObject(
-            mass, radius,
-            Vector.newXY(Math.random()*8.0e11*(Math.random()<0.5 ? 1 : -1), Math.random()*8.0e11*(Math.random()<0.5 ? 1 : -1)),
-            Vector.newXY(Math.random()*29780*(Math.random()<0.5 ? 1 : -1), Math.random()*29780*(Math.random()<0.5 ? 1 : -1))
-        );
-    }
-
-    function createSpace()
-    {
+        function createObjectRandom()
+        {
+            //var radius = 1e4 + Math.random() * 6.96e8;
+            //var mass = radius*radius*radius*1e3;
+            //var radius = 1e4 + Math.random() * 7e7;
+            var radius = 7e7;
+            var mass = radius*radius*radius*5536;
+            var x = Math.random()*8.0e10*(Math.random()<0.5 ? 1 : -1);
+            var y = Math.random()*8.0e10*(Math.random()<0.5 ? 1 : -1);
+            var vx = 0;//Math.random()*29780*(Math.random()<0.5 ? 1 : -1);
+            var vy = 0;//Math.random()*29780*(Math.random()<0.5 ? 1 : -1);
+            return new SpaceObject(
+                mass, radius,
+                Vector.newXY(x, y),
+                Vector.newXY(vx, vy)
+            );
+        }
         var space = new Space();
         for(var i = 0; i < 50; ++i){
             space.addObject(createObjectRandom());
         }
-        /*
-        space.addObject(new SpaceObject(1e24, 6e8, Vector.newXY(-1e11, -1e11), Vector.newXY(29780, 29780)));
-        space.addObject(new SpaceObject(1e24, 6e8, Vector.newXY(1e11, -1e11), Vector.newXY(-29780, 29780)));
-*/
         return space;
     }
 
+    function createSpaceCollisionTest()
+    {
+        var space = new Space();
+        space.addObject(new SpaceObject(1e28, 6e8, Vector.newXY(-1e11, -1e11), Vector.newXY(29780, 29780)));
+        space.addObject(new SpaceObject(1e28, 6e8, Vector.newXY(1e11, -1e11), Vector.newXY(-29780, 29780)));
+        return space;
+    }
+
+    function createSpaceSwingBy()
+    {
+        var space = new Space();
+        space.addObject(new SpaceObject(
+            1.899e27, 142984000/2,
+            Vector.newXY(5e10, 0),
+            Vector.newXY(-13069.7, 0)));
+        space.addObject(new SpaceObject(
+            1000, 10,
+            Vector.newXY(0, -3e10),
+            Vector.newXY(3800, 10000)));
+        return space;
+    }
+
+    function createSpaceSwingBy2()
+    {
+        var space = new Space();
+        space.addObject(new SpaceObject(
+            1.899e27, 142984000/2,
+            Vector.newXY(5e10, 0),
+            Vector.newXY(-13069.7, 0)));
+        space.addObject(new SpaceObject(
+            1.899e27, 142984000/2,
+            Vector.newXY(0, -3e10),
+            Vector.newXY(3890+200, 10000)));
+        return space;
+    }
+
+
+    //
     
     function drawSpace(cv, space)
     {
         var ctx = cv.getContext("2d");
         var width = cv.width;
         var height = cv.height;
-        var scale = (width/2)/2.0e12;
+        //var scale = (width/2)/2.0e12;
+        //var scale = (width/2)/1.0e12;
+        //var scale = (width/2)/2.0e11;
+        var scale = (width/2)/3.0e10;
 
         //ctx.clearRect(0, 0, width, height);
         ctx.fillStyle = "rgba(0,0,0,0.01)";
@@ -203,10 +287,10 @@ if(typeof Misohena.galaxysim == "undefined"){
             if(o.isDestroyed()){
                 return;
             }
-            var x = width/2 + o.position[0] * scale;
-            var y = height/2 - o.position[1] * scale;
+            var x = width/2 + Vector.getX(o.position) * scale;
+            var y = height/2 - Vector.getY(o.position) * scale;
             ctx.beginPath();
-            ctx.arc(x, y, 1, 0, 2*Math.PI, false);
+            ctx.arc(x, y, 0.75, 0, 2*Math.PI, false);
             ctx.fill();
         });
 
@@ -219,15 +303,35 @@ if(typeof Misohena.galaxysim == "undefined"){
         cv.setAttribute("height", 480);
         cv.style.cssText = "border: 1px solid;";
         document.body.appendChild(cv);
+        cv.getContext("2d").fillRect(0, 0, cv.width, cv.height);
 
-        var space = createSpace();
+        //var space = createSpaceCollisionTest();
+        //var space = createSpaceRandom();
+        //var space = createSpaceSwingBy();
+        var space = createSpaceSwingBy2();
         //var space = createSpaceSolarSystem();
 
         drawSpace(cv, space);
 
         setInterval(function(){
-            stepSpaceTime(space, 3600*24*5);
+            for(var i = 0; i < 80; ++i){
+                space.step(3600*0.125);
+            }
+//            space.step(3600*24);
             drawSpace(cv, space);
+/*
+            document.body.appendChild(document.createElement("br"));
+            document.body.appendChild(document.createTextNode(
+                space.objects[0].position[0] + "\t"+
+                space.objects[0].position[1] + "\t"+
+                space.objects[0].velocity[0] + "\t"+
+                space.objects[0].velocity[1] + "\t"+
+                space.objects[1].position[0] + "\t"+
+                space.objects[1].position[1] + "\t"+
+                space.objects[1].velocity[0] + "\t"+
+                space.objects[1].velocity[1] + "\t"
+            ));
+*/
         }, 100);
     }
     
