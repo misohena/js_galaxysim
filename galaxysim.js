@@ -11,6 +11,10 @@
     var thispkg = package("Misohena", "galaxysim");
 
     var G = 6.67259e-11;
+    var EPS = 1e9;
+    var THETA = 0.75;
+    var EPS2 = EPS*EPS;
+    var THETA2 = THETA*THETA;
 
     var Vector = {
         newZero: function(){ return [0, 0];},
@@ -56,6 +60,16 @@
                 return [a[0] + s*b[0], a[1] + s*b[1]];
             }
         },
+        assign: function(src, dst){ //addとかと同じようにdstを右に統一する。
+            if(dst){
+                dst[0] = src[0];
+                dst[1] = src[1];
+                return dst;
+            }
+            else{
+                return [src[0], src[1]];
+            }
+        },
         lengthSq: function(v) { return v[0]*v[0] + v[1]*v[1];},
         length: function(v) { return Math.sqrt(v[0]*v[0] + v[1]*v[1]);},
         setZero: function(v) { v[0] = v[1] = 0;},
@@ -63,6 +77,159 @@
         getY: function(v) { return v[1];}
     };
 
+    // class SpaceNode
+    var SpaceNode = thispkg.SpaceNode = function(nodeCenter, nodeSize){
+        this.center = nodeCenter;
+        this.size = nodeSize; //length of edge
+        this.subnodes = new Array(4);
+        this.firstObj = null;
+        this.countObj = 0;
+        this.gravityCenter = Vector.newZero();
+        this.gravityMass = 0;
+    };
+    SpaceNode.prototype = {
+        addObjects: function(firstObj){
+            if(firstObj == null){
+            }
+            else if(firstObj.next == null){
+                this.firstObj = firstObj;
+                this.countObj = 1;
+            }
+            else{
+                var subnodeObjs = [null, null, null, null];//new Array(4);
+                var count = 0;
+                var objNext;
+                for(var obj = firstObj; obj != null; obj = objNext, ++count){
+                    objNext = obj.next;
+                    var indexBits =
+                        (Vector.getX(obj.position)>Vector.getX(this.center) ? 1 : 0)+
+                        (Vector.getY(obj.position)>Vector.getY(this.center) ? 2 : 0);
+                    obj.next = subnodeObjs[indexBits];
+                    subnodeObjs[indexBits] = obj;
+                }
+                this.countObj = count;
+
+                for(var indexBits = 0; indexBits < 4; ++indexBits){
+                    if(subnodeObjs[indexBits]){
+                        // create a new subnode.
+                        var qsize = 0.25 * this.size;
+                        var snodeCenter = Vector.newXY(
+                            (indexBits&1) ? qsize : -qsize,
+                            (indexBits&2) ? qsize : -qsize);
+                        Vector.add(snodeCenter, this.center,  snodeCenter);
+                        var snode = new SpaceNode(snodeCenter, 0.5*this.size);
+                        snode.addObjects(subnodeObjs[indexBits]);
+                        this.subnodes[indexBits] = snode;
+                    }
+                    else{
+                        this.subnodes[indexBits] = null;
+                    }
+                }
+            }
+        },
+        updateCenterOfGravity: function(){
+            if(this.countObj > 1){
+                var gCenter = Vector.newZero();
+                var gMass = 0;
+                for(var i = 0; i < 4; ++i){
+                    var snode = this.subnodes[i];
+                    if(snode){
+                        snode.updateCenterOfGravity();
+                        Vector.addMul(gCenter, snode.gravityMass, snode.gravityCenter,
+                                      gCenter);
+                        gMass += snode.gravityMass;
+                    }
+                }
+                Vector.mul(1.0/gMass, gCenter,  this.gravityCenter);
+                this.gravityMass = gMass;
+            }
+            else if(this.countObj == 1){
+                Vector.assign(this.firstObj.position,  this.gravityCenter);
+                this.gravityMass = this.firstObj.mass;
+            }
+            else{
+                Vector.setZero(this.gravityCenter);
+                this.gravityMass = 0;
+            }
+        },
+        accumulateGravityForce: function(obj, eps2, theta2)
+        {
+            var v = Vector.sub(this.gravityCenter, obj.position);
+            var r2 = Vector.lengthSq(v);
+            if(r2*theta2 > this.size*this.size || this.countObj == 1){
+                var invR2 = 1 / (r2 + eps2);
+                var invR = Math.sqrt(invR2);
+                var invR3 = invR2 * invR;
+                obj.phi -= this.gravityMass * invR;
+                Vector.addMul(obj.acceleration, this.gravityMass*invR3, v,
+                              obj.acceleration);
+            }
+            else{
+                for(var i = 0; i < 4; ++i){
+                    var snode = this.subnodes[i];
+                    if(snode){
+                        snode.accumulateGravityForce(obj, eps2, theta2);
+                    }
+                }
+            }
+        },
+    };
+
+    function maxDistLinf(objects)
+    {
+        var d = 0;
+        for(var i = 0; i < objects.length; ++i){
+            var x = Vector.getX(objects[i].position);
+            var y = Vector.getY(objects[i].position);
+            if(x < 0){x = -x;}
+            if(y < 0){y = -y;}
+            if(x > d){
+                d = x;
+            }
+            if(y > d){
+                d = y;
+            }
+        }
+        return d; ///@todo できれば2^nに合わせたい。
+    }
+    
+    function accumulateGravity(dt, objects, eps2, theta2)
+    {
+        if(objects.length <= 0){
+            return;
+        }
+        var rootNodeSize = maxDistLinf(objects);
+        var rootNode = new SpaceNode(Vector.newZero(), rootNodeSize*2);
+        
+        for(var i = 1; i < objects.length; ++i){
+            objects[i-1].next = objects[i];
+        }
+        objects[objects.length-1].next = null;
+
+        rootNode.addObjects(objects[0]);
+        rootNode.updateCenterOfGravity();
+
+        for(var i = 0; i < objects.length; ++i){
+            var obj = objects[i];
+            Vector.setZero(obj.acceleration);
+            obj.phi = obj.mass / Math.sqrt(eps2);
+            rootNode.accumulateGravityForce(obj, eps2, theta2);
+            Vector.mul(G, obj.acceleration,  obj.acceleration);
+        }
+    }
+    
+    function integrate(dt, objects, eps2, theta2)
+    {
+        for(var i = 0; i < objects.length; ++i){
+            objects[i].predict(dt);
+        }
+        accumulateGravity(dt, objects, eps2, theta2);
+        for(var i = 0; i < objects.length; ++i){
+            objects[i].correct(dt);
+        }
+    }
+
+    
     // class SpaceObject
     var SpaceObject = thispkg.SpaceObject = function(mass, radius, pos, vel){
         this.mass = mass;
@@ -70,7 +237,8 @@
         this.position = pos || Vector.newZero();
         this.velocity = vel || Vector.newZero();
         this.acceleration = Vector.newZero();
-        this.force = Vector.newZero();
+        this.phi = 0;
+        this.next = null;
     };
     SpaceObject.prototype = {
         destroy: function(){
@@ -100,15 +268,27 @@
             // acceleration
             // force
         },
-        move: function(dt){
-            if(this.isDestroyed()){return;}
-            
-            Vector.mul(1.0/this.mass, this.force,  this.acceleration);
-            Vector.setZero(this.force);
-            
-            Vector.addMul(this.velocity, dt, this.acceleration,  this.velocity);
-            Vector.addMul(this.position, dt, this.velocity,  this.position);
-        }
+        predict: function(dt){
+            Vector.addMul(this.position, dt, this.velocity,
+                          this.position);
+            Vector.addMul(this.position, 0.5*dt*dt, this.acceleration,
+                          this.position);
+            Vector.addMul(this.velocity, 0.5*dt, this.acceleration,
+                          this.velocity);
+        },
+        correct: function(dt){
+            Vector.addMul(this.velocity, 0.5*dt, this.acceleration,
+                          this.velocity);
+        },
+//        move: function(dt){
+//            if(this.isDestroyed()){return;}
+//            
+//            Vector.mul(1.0/this.mass, this.force,  this.acceleration);
+//            Vector.setZero(this.force);
+//            
+//            Vector.addMul(this.velocity, dt, this.acceleration,  this.velocity);
+//            Vector.addMul(this.position, dt, this.velocity,  this.position);
+//        }
     };
 
     // class Space
@@ -118,9 +298,12 @@
     Space.prototype = {
         addObject: function(o) { this.objects.push(o);},
         step: function(dt) {
+            /*
             resolveMultipleBodyProblem(this.objects);
             removeDestroyed(this.objects);
             this.objects.forEach(function(o){o.move(dt);});
+            */
+            integrate(dt, this.objects, EPS2, THETA2);
         },
     };
 
@@ -129,7 +312,8 @@
         //if(o1.isDestroyed() || o2.isDestroyed()){ return; }
         // compute distance.
         var v = Vector.sub(o2.position, o1.position);
-        var r = Vector.length(v);
+        var r2 = Vector.lengthSq(v);
+        var r = Math.sqrt(r2);
         
         // collision
         if(r <= o1.radius + o2.radius){
@@ -139,6 +323,9 @@
         }
 
         // gravity
+        // 距離が近くなると発散するので、ポテンシャルとして-Gm/rではなく-Gm/sqrt(r^2+eps^2)を使う。
+        // http://www.artcompsci.org/~makino/kougi/keisan_tenmongakuII/note10/node2.html
+        
         var fpr = G * o1.mass * o2.mass / (r*r*r);
         Vector.addMul(o1.force,  fpr, v,  o1.force);
         Vector.addMul(o2.force, -fpr, v,  o2.force);
@@ -223,7 +410,7 @@
             );
         }
         var space = new Space();
-        for(var i = 0; i < 50; ++i){
+        for(var i = 0; i < 100; ++i){
             space.addObject(createObjectRandom());
         }
         return space;
@@ -274,9 +461,9 @@
         var width = cv.width;
         var height = cv.height;
         //var scale = (width/2)/2.0e12;
-        //var scale = (width/2)/1.0e12;
+        var scale = (width/2)/1.0e12;
         //var scale = (width/2)/2.0e11;
-        var scale = (width/2)/3.0e10;
+        //var scale = (width/2)/3.0e10;
 
         //ctx.clearRect(0, 0, width, height);
         ctx.fillStyle = "rgba(0,0,0,0.01)";
@@ -306,33 +493,34 @@
         cv.getContext("2d").fillRect(0, 0, cv.width, cv.height);
 
         //var space = createSpaceCollisionTest();
-        //var space = createSpaceRandom();
+        var space = createSpaceRandom();
         //var space = createSpaceSwingBy();
-        var space = createSpaceSwingBy2();
+        //var space = createSpaceSwingBy2();
         //var space = createSpaceSolarSystem();
 
         drawSpace(cv, space);
 
         setInterval(function(){
-            for(var i = 0; i < 80; ++i){
-                space.step(3600*0.125);
-            }
-//            space.step(3600*24);
+//            for(var i = 0; i < 80; ++i){
+//                space.step(3600*0.125);
+//            }
+            space.step(3600*24);
             drawSpace(cv, space);
-/*
-            document.body.appendChild(document.createElement("br"));
-            document.body.appendChild(document.createTextNode(
-                space.objects[0].position[0] + "\t"+
-                space.objects[0].position[1] + "\t"+
-                space.objects[0].velocity[0] + "\t"+
-                space.objects[0].velocity[1] + "\t"+
-                space.objects[1].position[0] + "\t"+
-                space.objects[1].position[1] + "\t"+
-                space.objects[1].velocity[0] + "\t"+
-                space.objects[1].velocity[1] + "\t"
-            ));
-*/
-        }, 100);
+
+//             document.body.appendChild(document.createElement("br"));
+//             document.body.appendChild(document.createTextNode(
+//                 space.objects[0].position[0] + "\t"+
+//                 space.objects[0].position[1] + "\t"+
+//                 space.objects[0].velocity[0] + "\t"+
+//                 space.objects[0].velocity[1] + "\t"+
+//                 space.objects[1].position[0] + "\t"+
+//                 space.objects[1].position[1] + "\t"+
+//                 space.objects[1].velocity[0] + "\t"+
+//                 space.objects[1].velocity[1] + "\t"
+//             ));
+
+        }, 10);
+
     }
     
     thispkg.App = {
