@@ -88,10 +88,11 @@
         this.gravityMass = 0;
     };
     SpaceNode.prototype = {
-        addObjects: function(firstObj){
+        setObjects: function(firstObj){
             if(firstObj == null){
             }
             else if(firstObj.next == null){
+                firstObj.next = this.firstObj;
                 this.firstObj = firstObj;
                 this.countObj = 1;
             }
@@ -118,7 +119,7 @@
                             (indexBits&2) ? qsize : -qsize);
                         Vector.add(snodeCenter, this.center,  snodeCenter);
                         var snode = new SpaceNode(snodeCenter, 0.5*this.size);
-                        snode.addObjects(subnodeObjs[indexBits]);
+                        snode.setObjects(subnodeObjs[indexBits]);
                         this.subnodes[indexBits] = snode;
                     }
                     else{
@@ -192,22 +193,40 @@
         }
         return d; ///@todo できれば2^nに合わせたい。
     }
+
+    function objectArrayToLinkList(objects)
+    {
+        if(objects.length < 1){
+            return null;
+        }
+        for(var i = 1; i < objects.length; ++i){
+            objects[i-1].next = objects[i];
+        }
+        objects[objects.length-1].next = null;
+        return objects[0];
+    }
+
+//     function countNodes(node)
+//     {
+//         var count = 1;
+//         for(var i = 0; i < 4; ++i){
+//             if(node.subnodes[i]){
+//                 count += countNodes(node.subnodes[i]);
+//             }
+//         }
+//         return count;
+//     }
     
-    function accumulateGravity(dt, objects, eps2, theta2)
+    function accumulateGravityByTree(dt, objects, eps2, theta2)
     {
         if(objects.length <= 0){
             return;
         }
         var rootNodeSize = maxDistLinf(objects);
         var rootNode = new SpaceNode(Vector.newZero(), rootNodeSize*2);
-        
-        for(var i = 1; i < objects.length; ++i){
-            objects[i-1].next = objects[i];
-        }
-        objects[objects.length-1].next = null;
-
-        rootNode.addObjects(objects[0]);
+        rootNode.setObjects(objectArrayToLinkList(objects));
         rootNode.updateCenterOfGravity();
+        //console.log("nodes="+countNodes(rootNode));
 
         for(var i = 0; i < objects.length; ++i){
             var obj = objects[i];
@@ -217,13 +236,44 @@
             Vector.mul(G, obj.acceleration,  obj.acceleration);
         }
     }
+
+    var tmpV = Vector.newZero();
+    function accumulateGravity(dt, objects, eps2)
+    {
+        if(objects.length <= 0){
+            return;
+        }
+
+        for(var i = 0; i < objects.length; ++i){
+            var obj1 = objects[i];
+            Vector.setZero(obj1.acceleration);
+            obj1.phi = 0;
+            for(var j = 0; j < objects.length; ++j){
+                if(j == i){
+                    continue;
+                }
+                var obj2 = objects[j];
+
+                Vector.sub(obj2.position, obj1.position,  tmpV);
+                var r2 = Vector.lengthSq(tmpV);
+                var invR2 = 1 / (r2 + eps2);
+                var invR = Math.sqrt(invR2);
+                var invR3 = invR2 * invR;
+                obj1.phi -= obj2.mass * invR;
+                Vector.addMul(obj1.acceleration, obj2.mass*invR3, tmpV,
+                              obj1.acceleration);
+            }
+            Vector.mul(G, obj1.acceleration, obj1.acceleration);
+        }
+    }
     
     function integrate(dt, objects, eps2, theta2)
     {
         for(var i = 0; i < objects.length; ++i){
             objects[i].predict(dt);
         }
-        accumulateGravity(dt, objects, eps2, theta2);
+        //accumulateGravityByTree(dt, objects, eps2, theta2);
+        accumulateGravity(dt, objects, eps2);
         for(var i = 0; i < objects.length; ++i){
             objects[i].correct(dt);
         }
@@ -389,6 +439,17 @@
         //space.addObject(new SpaceObject(, , Vector.newOnX(), Vector.newOnY()));
         return space;
     }
+
+    function randomPositionInCircle()
+    {
+        for(;;){
+            var x = 2.0*Math.random() - 1.0;
+            var y = 2.0*Math.random() - 1.0;
+            if(x*x+y*y < 1){
+                return Vector.newXY(x, y);
+            }
+        }
+    }
     
     function createSpaceRandom()
     {
@@ -399,13 +460,13 @@
             //var radius = 1e4 + Math.random() * 7e7;
             var radius = 7e7;
             var mass = radius*radius*radius*5536;
-            var x = Math.random()*8.0e10*(Math.random()<0.5 ? 1 : -1);
-            var y = Math.random()*8.0e10*(Math.random()<0.5 ? 1 : -1);
+            var pos = randomPositionInCircle();
+            Vector.mul(8.0e10, pos, pos);
             var vx = 0;//Math.random()*29780*(Math.random()<0.5 ? 1 : -1);
             var vy = 0;//Math.random()*29780*(Math.random()<0.5 ? 1 : -1);
             return new SpaceObject(
                 mass, radius,
-                Vector.newXY(x, y),
+                pos,
                 Vector.newXY(vx, vy)
             );
         }
