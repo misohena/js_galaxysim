@@ -16,6 +16,10 @@
     var EPS2 = EPS*EPS;
     var THETA2 = THETA*THETA;
 
+    //
+    // Vector Math Utilities
+    //
+    
     var Vector = {
         newZero: function(){ return [0, 0];},
         newOnX: function(x){ return [x, 0];},
@@ -72,12 +76,22 @@
         },
         lengthSq: function(v) { return v[0]*v[0] + v[1]*v[1];},
         length: function(v) { return Math.sqrt(v[0]*v[0] + v[1]*v[1]);},
+        distanceSq: function(a, b) {
+            var dx = a[0] - b[0];
+            var dy = a[1] - b[1];
+            return dx*dx+dy*dy;
+        },
+        distanceLinf: function(a, b) { return Math.max(
+            Math.abs(a[0] - b[0]), Math.abs(a[1] - b[0]));},
         setZero: function(v) { v[0] = v[1] = 0;},
         getX: function(v) { return v[0];},
         getY: function(v) { return v[1];}
     };
 
+    //
     // class SpaceNode
+    //
+    
     var SpaceNode = thispkg.SpaceNode = function(nodeCenter, nodeSize){
         this.center = nodeCenter;
         this.size = nodeSize; //length of edge
@@ -97,6 +111,7 @@
                 this.countObj = 1;
             }
             else{
+                // divide the points into four sets.
                 var subnodeObjs = [null, null, null, null];//new Array(4);
                 var count = 0;
                 var objNext;
@@ -110,9 +125,9 @@
                 }
                 this.countObj = count;
 
+                // create subnode objects.
                 for(var indexBits = 0; indexBits < 4; ++indexBits){
                     if(subnodeObjs[indexBits]){
-                        // create a new subnode.
                         var qsize = 0.25 * this.size;
                         var snodeCenter = Vector.newXY(
                             (indexBits&1) ? qsize : -qsize,
@@ -153,7 +168,7 @@
                 this.gravityMass = 0;
             }
         },
-        accumulateGravityForce: function(obj, eps2, theta2)
+        accumulateGravityToObject: function(obj, eps2, theta2)
         {
             var v = Vector.sub(this.gravityCenter, obj.position);
             var r2 = Vector.lengthSq(v);
@@ -169,13 +184,40 @@
                 for(var i = 0; i < 4; ++i){
                     var snode = this.subnodes[i];
                     if(snode){
-                        snode.accumulateGravityForce(obj, eps2, theta2);
+                        snode.accumulateGravityToObject(obj, eps2, theta2);
                     }
                 }
             }
         },
+        countNodes: function()
+        {
+            var count = 1;
+            for(var i = 0; i < 4; ++i){
+                if(this.subnodes[i]){
+                    count += this.subnodes[i].countNodes();
+                }
+            }
+            return count;
+        },
+        findObjectInSquare: function(center, radius, func)
+        {
+            if(Vector.distanceLinf(this.center, center) <= 0.5*this.size+radius){
+                if(this.countObj == 1){
+                    func(this.firstObj);
+                }
+                else if(this.countObj > 1){
+                    for(var i = 0; i < 4; ++i){
+                        if(this.subnodes[i]){
+                            this.subnodes[i].findObjectInSquare(center, radius, func);
+                        }
+                    }
+                }
+            }
+        }
     };
 
+    //
+    
     function maxDistLinf(objects)
     {
         var d = 0;
@@ -191,10 +233,10 @@
                 d = y;
             }
         }
-        return d; ///@todo できれば2^nに合わせたい。
+        return d; ///@todo できれば2^nに合わせたい。境界部分で切り捨て誤差が生じるので。
     }
 
-    function objectArrayToLinkList(objects)
+    function objectArrayToLinkedList(objects)
     {
         if(objects.length < 1){
             return null;
@@ -206,17 +248,8 @@
         return objects[0];
     }
 
-//     function countNodes(node)
-//     {
-//         var count = 1;
-//         for(var i = 0; i < 4; ++i){
-//             if(node.subnodes[i]){
-//                 count += countNodes(node.subnodes[i]);
-//             }
-//         }
-//         return count;
-//     }
-    
+    // 全ての物体について、他の全ての物体との引力を積算します。
+    // 四分木を使用します。
     function accumulateGravityByTree(dt, objects, eps2, theta2)
     {
         if(objects.length <= 0){
@@ -224,20 +257,49 @@
         }
         var rootNodeSize = maxDistLinf(objects);
         var rootNode = new SpaceNode(Vector.newZero(), rootNodeSize*2);
-        rootNode.setObjects(objectArrayToLinkList(objects));
+        rootNode.setObjects(objectArrayToLinkedList(objects));
         rootNode.updateCenterOfGravity();
-        //console.log("nodes="+countNodes(rootNode));
+        //console.log("nodes="+rootNode.countNodes());
 
+        var maxRadius = 0;
         for(var i = 0; i < objects.length; ++i){
+            // accumulate gravity.
             var obj = objects[i];
+            if(obj.isDestroyed()){
+                continue;
+            }
             Vector.setZero(obj.acceleration);
             obj.phi = obj.mass / Math.sqrt(eps2);
-            rootNode.accumulateGravityForce(obj, eps2, theta2);
-            Vector.mul(G, obj.acceleration,  obj.acceleration);
+            rootNode.accumulateGravityToObject(obj, eps2, theta2);
+            Vector.mul(G, obj.acceleration,  obj.acceleration); //ここでGを掛けた方が実行効率はよいが、invR3〜のところで掛けた方がaccelerationの意味(単位)が明確かもしれない。
+            // find maximum radius
+            if(maxRadius > obj.radius){
+                maxRadius = obj.radius;
+            }
+        }
+            
+        // detect collision
+        for(var i = 0; i < objects.length; ++i){
+            var obj = objects[i];
+            if(obj.isDestroyed()){
+                continue;
+            }
+            rootNode.findObjectInSquare(
+                obj.position, obj.radius + maxRadius,
+                function(o2){
+                    if(o2 !== obj){
+                        var sumRadius = o2.radius + obj.radius;
+                        if(!o2.isDestroyed() && Vector.distanceSq(o2.position, obj.position) < sumRadius*sumRadius){
+                            console.log("collision");
+                            obj.merge(o2);
+                            o2.destroy();
+                        }
+                    }
+                });
         }
     }
 
-    var tmpV = Vector.newZero();
+    // 全ての物体について、他の全ての物体との引力を積算します。
     function accumulateGravity(dt, objects, eps2)
     {
         if(objects.length <= 0){
@@ -254,33 +316,35 @@
                 }
                 var obj2 = objects[j];
 
-                Vector.sub(obj2.position, obj1.position,  tmpV);
-                var r2 = Vector.lengthSq(tmpV);
+                var v = Vector.sub(obj2.position, obj1.position);
+                var r2 = Vector.lengthSq(v);
                 var invR2 = 1 / (r2 + eps2);
                 var invR = Math.sqrt(invR2);
                 var invR3 = invR2 * invR;
                 obj1.phi -= obj2.mass * invR;
-                Vector.addMul(obj1.acceleration, obj2.mass*invR3, tmpV,
+                Vector.addMul(obj1.acceleration, obj2.mass*invR3, v,
                               obj1.acceleration);
             }
             Vector.mul(G, obj1.acceleration, obj1.acceleration);
         }
     }
-    
-    function integrate(dt, objects, eps2, theta2)
+
+    // 全ての物体について、時間を進めます。
+    function stepObjects(dt, objects, eps2, theta2)
     {
         for(var i = 0; i < objects.length; ++i){
             objects[i].predict(dt);
         }
-        //accumulateGravityByTree(dt, objects, eps2, theta2);
-        accumulateGravity(dt, objects, eps2);
+        accumulateGravityByTree(dt, objects, eps2, theta2);
+        //accumulateGravity(dt, objects, eps2);
         for(var i = 0; i < objects.length; ++i){
             objects[i].correct(dt);
         }
     }
 
-    
+    //
     // class SpaceObject
+    //
     var SpaceObject = thispkg.SpaceObject = function(mass, radius, pos, vel){
         this.mass = mass;
         this.radius = radius;
@@ -310,13 +374,16 @@
                 Vector.mul(o.mass, o.position));
             var newPos = Vector.mul(1 / newMass, g);
 
+            var r1 = this.radius;
+            var r2 = o.radius;
+            var newRadius = Math.pow(r1*r1*r1 + r2*r2*r2, 1.0/3.0);
+            
             this.mass = newMass;
-            this.radius += o.radius; ///@todo
+            this.radius = newRadius;
             this.position = newPos;
             this.velocity = newVel;
             ///@todo
             // acceleration
-            // force
         },
         predict: function(dt){
             Vector.addMul(this.position, dt, this.velocity,
@@ -341,57 +408,19 @@
 //        }
     };
 
+    //
     // class Space
+    //
     var Space = thispkg.Space = function(){
         this.objects = [];
     };
     Space.prototype = {
         addObject: function(o) { this.objects.push(o);},
         step: function(dt) {
-            /*
-            resolveMultipleBodyProblem(this.objects);
+            stepObjects(dt, this.objects, EPS2, THETA2);
             removeDestroyed(this.objects);
-            this.objects.forEach(function(o){o.move(dt);});
-            */
-            integrate(dt, this.objects, EPS2, THETA2);
-        },
+        }
     };
-
-    function resolveTwoBodyProblem(o1, o2)
-    {
-        //if(o1.isDestroyed() || o2.isDestroyed()){ return; }
-        // compute distance.
-        var v = Vector.sub(o2.position, o1.position);
-        var r2 = Vector.lengthSq(v);
-        var r = Math.sqrt(r2);
-        
-        // collision
-        if(r <= o1.radius + o2.radius){
-            o1.merge(o2); ///@todo 半径が大きくなるので、すでに処理したものの中にぶつかるものが出るかもしれない。
-            o2.destroy();
-            return;
-        }
-
-        // gravity
-        // 距離が近くなると発散するので、ポテンシャルとして-Gm/rではなく-Gm/sqrt(r^2+eps^2)を使う。
-        // http://www.artcompsci.org/~makino/kougi/keisan_tenmongakuII/note10/node2.html
-        
-        var fpr = G * o1.mass * o2.mass / (r*r*r);
-        Vector.addMul(o1.force,  fpr, v,  o1.force);
-        Vector.addMul(o2.force, -fpr, v,  o2.force);
-    }
-
-    function resolveMultipleBodyProblem(objects)
-    {
-        var i, j;
-        for(i = 0; i < objects.length; ++i){
-            if(objects[i].isDestroyed()){ continue; }
-            for(j = i+1; j < objects.length; ++j){
-                if(objects[j].isDestroyed()){ continue; }
-                resolveTwoBodyProblem(objects[i], objects[j]);
-            }
-        }
-    }
 
     function removeDestroyed(objects)
     {
@@ -412,8 +441,10 @@
         }
         objects.length = j;
     }
-
     
+
+    //
+    //
     //
     
     function createSpaceSolarSystem()
@@ -471,7 +502,7 @@
             );
         }
         var space = new Space();
-        for(var i = 0; i < 100; ++i){
+        for(var i = 0; i < 20; ++i){
             space.addObject(createObjectRandom());
         }
         return space;
@@ -522,12 +553,12 @@
         var width = cv.width;
         var height = cv.height;
         //var scale = (width/2)/2.0e12;
-        var scale = (width/2)/1.0e12;
-        //var scale = (width/2)/2.0e11;
+        //var scale = (width/2)/1.0e12;
+        var scale = (width/2)/2.0e11;
         //var scale = (width/2)/3.0e10;
 
         //ctx.clearRect(0, 0, width, height);
-        ctx.fillStyle = "rgba(0,0,0,0.01)";
+        ctx.fillStyle = "rgba(0,0,0, 0.01)";
         ctx.fillRect(0, 0, width, height);
         
         ctx.fillStyle = "rgb(255,255,255)";
@@ -537,8 +568,13 @@
             }
             var x = width/2 + Vector.getX(o.position) * scale;
             var y = height/2 - Vector.getY(o.position) * scale;
+            var r = o.radius * scale;
+            //ctx.beginPath();
+            //ctx.arc(x, y, r, 0, 2*Math.PI, false);
+            //ctx.stroke();
             ctx.beginPath();
-            ctx.arc(x, y, 0.75, 0, 2*Math.PI, false);
+            //ctx.arc(x, y, 0.75, 0, 2*Math.PI, false);
+            ctx.arc(x, y, r*8, 0, 2*Math.PI, false);
             ctx.fill();
         });
 
@@ -565,7 +601,7 @@
 //            for(var i = 0; i < 80; ++i){
 //                space.step(3600*0.125);
 //            }
-            space.step(3600*24);
+            space.step(3600*1);
             drawSpace(cv, space);
 
 //             document.body.appendChild(document.createElement("br"));
