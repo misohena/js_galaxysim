@@ -85,7 +85,7 @@
             return dx*dx+dy*dy;
         },
         distanceLinf: function(a, b) { return Math.max(
-            Math.abs(a[0] - b[0]), Math.abs(a[1] - b[0]));},
+            Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1]));},
         setZero: function(v) { v[0] = v[1] = 0;},
         getX: function(v) { return v[0];},
         getY: function(v) { return v[1];}
