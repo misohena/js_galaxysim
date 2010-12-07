@@ -10,6 +10,9 @@
     }
     var thispkg = package("Misohena", "galaxysim");
 
+    var HTML = thispkg.HTML;
+    var Util = thispkg.Util;
+    
     var G = 6.67259e-11;
     var EPS = 1e9;
     var THETA = 0.75;
@@ -290,7 +293,7 @@
                     if(o2 !== obj){
                         var sumRadius = o2.radius + obj.radius;
                         if(!o2.isDestroyed() && Vector.distanceSq(o2.position, obj.position) < sumRadius*sumRadius){
-                            console.log("collision");
+                            //console.log("collided");
                             obj.merge(o2);
                             o2.destroy();
                         }
@@ -413,12 +416,14 @@
     //
     var Space = thispkg.Space = function(){
         this.objects = [];
+        this.time = 0;
     };
     Space.prototype = {
         addObject: function(o) { this.objects.push(o);},
         step: function(dt) {
             stepObjects(dt, this.objects, EPS2, THETA2);
             removeDestroyed(this.objects);
+            this.time += dt;
         }
     };
 
@@ -546,16 +551,28 @@
 
 
     //
-    
-    function drawSpace(cv, space)
+
+    function toElapsedTimeString(t)
     {
-        var ctx = cv.getContext("2d");
+        var days = Math.floor(t / (24*60*60));
+        t -= days*(24*60*60);
+        var hour = Math.floor(t / (60*60));
+        t -= hour*(60*60);
+        var min = Math.floor(t / 60);
+        t -= min*60;
+        var sec = t;
+
+        return days+"days "+
+            ("0"+hour).slice(-2)+"h"+
+            ("0"+min).slice(-2)+"m"+
+            sec+"s";
+    }
+    
+    function drawSpace(cv, ctx, space, viewScale, viewX, viewY)
+    {
         var width = cv.width;
         var height = cv.height;
-        //var scale = (width/2)/2.0e12;
-        //var scale = (width/2)/1.0e12;
-        var scale = (width/2)/2.0e11;
-        //var scale = (width/2)/3.0e10;
+        var scale = viewScale;
 
         //ctx.clearRect(0, 0, width, height);
         ctx.fillStyle = "rgba(0,0,0, 0.01)";
@@ -566,8 +583,8 @@
             if(o.isDestroyed()){
                 return;
             }
-            var x = width/2 + Vector.getX(o.position) * scale;
-            var y = height/2 - Vector.getY(o.position) * scale;
+            var x = width/2 + (Vector.getX(o.position) - viewX) * scale;
+            var y = height/2 - (Vector.getY(o.position) - viewY) * scale;
             var r = o.radius * scale;
             //ctx.beginPath();
             //ctx.arc(x, y, r, 0, 2*Math.PI, false);
@@ -578,31 +595,144 @@
             ctx.fill();
         });
 
+        // Status
+        var statusText = "objects:"+space.objects.length +
+            " time:"+toElapsedTimeString(space.time);
+        ctx.fillStyle = "rgb(128,128,128)";
+        ctx.fillRect(0, 0, ctx.measureText(statusText).width, 16);
+        ctx.font = "16px";
+        ctx.fillStyle = "rgb(255,255,255)";
+        ctx.fillText(statusText, 0, 16);
+
+        // Scale
+        var barLenText = (0.25*width/scale).toExponential()+"m";
+        ctx.strokeStyle = "rgb(255,255,255)";
+        ctx.beginPath();
+        ctx.moveTo(0.25*width, height-8);
+        ctx.lineTo(0.5*width, height-8);
+        ctx.stroke();
+        ctx.fillText(barLenText,
+                     0.25*width + 0.5*(0.25*width-ctx.measureText(barLenText).width),
+                     height-8-2);
     }
 
+    var Conductor = function(){
+        this.timerId = null;
+        this.dt = 3600;
+        this.space = null;
+        this.view = null;
+    }
+    Conductor.prototype = {
+        setTimeSlice: function(dt){ this.dt = dt;},
+        setSpace: function(space){ this.space = space;},
+        setView: function(view) { this.view = view;},
+        start: function(){
+            if(this.space && this.timerId == null){
+                var self = this;
+                this.timerId = setInterval(function(){self.onTime();}, 10);
+            }
+        },
+        stop: function(){
+            if(this.timerId != null){
+                clearInterval(this.timerId);
+                this.timerId = null;
+            }
+        },
+        onTime: function(){
+            if(this.space){
+                this.space.step(this.dt);
+                if(this.view){
+                    this.view();
+                }
+            }
+        }
+    };
+    
+
     function main() {
-        // create canvas
+        var conductor = new Conductor();
+        conductor.setTimeSlice(3600*1);
+        
+        // create a canvas.
         var cv = document.createElement("canvas");
         cv.setAttribute("width", 480);
         cv.setAttribute("height", 480);
         cv.style.cssText = "border: 1px solid;";
         document.body.appendChild(cv);
-        cv.getContext("2d").fillRect(0, 0, cv.width, cv.height);
+        var ctx = cv.getContext("2d");
+        ctx.fillRect(0, 0, cv.width, cv.height);
 
+        function zoomByMouseWheel(e){
+            var delta = e.wheelDelta ? e.wheelDelta / 120
+                : e.detail ? e.detail / 3
+                : 0;
+            if(delta < 0){
+                viewScale *= 0.5;
+            }
+            else if(delta > 0){
+                viewScale *= 2;
+            }
+            e.preventDefault();
+        }
+        cv.addEventListener("DOMMouseScroll", zoomByMouseWheel, false);
+        cv.addEventListener("mousewheel", zoomByMouseWheel, false); //chrome
+
+        function beginMouseDragScroll(e){
+            function moveMouseDragScroll(e){
+                pos1 = Util.getMousePosOnElement(cv, e);
+                viewX = viewPos0[0] - (pos1[0] - pos0[0])/viewScale;
+                viewY = viewPos0[1] + (pos1[1] - pos0[1])/viewScale;
+            }
+            function endMouseDragScroll(e){
+                cv.removeEventListener("mousemove", moveMouseDragScroll, true);
+                cv.removeEventListener("mouseup", endMouseDragScroll, true);
+            }
+            var viewPos0 = [viewX, viewY];
+            var pos0 = Util.getMousePosOnElement(cv, e);
+            var pos1 = pos0;
+            cv.addEventListener("mousemove", moveMouseDragScroll, true);
+            cv.addEventListener("mouseup", endMouseDragScroll, true);
+        }
+        cv.addEventListener("mousedown", beginMouseDragScroll, false);
+
+        // create a controller.
+        var stopButton;
+        var startButton;
+        var controlDiv = HTML.div({}, [
+            stopButton = HTML.button("stop"),
+            startButton = HTML.button("start")
+        ]);
+        document.body.appendChild(controlDiv);
+
+        
+        stopButton.addEventListener("click", function(e){conductor.stop();}, false);
+        startButton.addEventListener("click", function(e){conductor.start();}, false);
+
+        // create a document.
         //var space = createSpaceCollisionTest();
         var space = createSpaceRandom();
         //var space = createSpaceSwingBy();
         //var space = createSpaceSwingBy2();
         //var space = createSpaceSolarSystem();
+        conductor.setSpace(space);
+        conductor.setView(function(){drawSpace(cv, ctx, space, viewScale, viewX, viewY);});
 
-        drawSpace(cv, space);
-
+        //
+        var viewScale = (cv.width/2)/
+//            2.0e12;
+//            1.0e12;
+            2.0e11;
+//            3.0e10;
+        var viewX = 0;
+        var viewY = 0;
+        drawSpace(cv, ctx, space, viewScale, viewX, viewY);
+/*
         setInterval(function(){
 //            for(var i = 0; i < 80; ++i){
 //                space.step(3600*0.125);
 //            }
             space.step(3600*1);
-            drawSpace(cv, space);
+            drawSpace(cv, ctx, space);
 
 //             document.body.appendChild(document.createElement("br"));
 //             document.body.appendChild(document.createTextNode(
@@ -617,7 +747,7 @@
 //             ));
 
         }, 10);
-
+*/
     }
     
     thispkg.App = {
