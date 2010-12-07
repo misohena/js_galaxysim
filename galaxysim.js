@@ -290,9 +290,9 @@
             rootNode.findObjectInSquare(
                 obj.position, obj.radius + maxRadius,
                 function(o2){
-                    if(o2 !== obj){
+                    if(!o2.isDestroyed() && o2 !== obj){
                         var sumRadius = o2.radius + obj.radius;
-                        if(!o2.isDestroyed() && Vector.distanceSq(o2.position, obj.position) < sumRadius*sumRadius){
+                        if(Vector.distanceSq(o2.position, obj.position) <= sumRadius*sumRadius){
                             //console.log("collided");
                             obj.merge(o2);
                             o2.destroy();
@@ -507,7 +507,7 @@
             );
         }
         var space = new Space();
-        for(var i = 0; i < 20; ++i){
+        for(var i = 0; i < 1000; ++i){
             space.addObject(createObjectRandom());
         }
         return space;
@@ -551,6 +551,44 @@
 
 
     //
+    // class Conductor
+    //
+    
+    var Conductor = function(){
+        this.timerId = null;
+        this.dt = 3600;
+        this.space = null;
+        this.view = null;
+    };
+    Conductor.prototype = {
+        setTimeSlice: function(dt){ this.dt = dt;},
+        setSpace: function(space){ this.space = space;},
+        setView: function(view) { this.view = view;},
+        start: function(){
+            if(this.space && this.timerId == null){
+                var self = this;
+                this.timerId = setInterval(function(){self.onTime();}, 10);
+            }
+        },
+        stop: function(){
+            if(this.timerId != null){
+                clearInterval(this.timerId);
+                this.timerId = null;
+            }
+        },
+        onTime: function(){
+            if(this.space){
+                this.space.step(this.dt);
+                if(this.view){
+                    this.view();
+                }
+            }
+        }
+    };
+
+    //
+    // class View
+    //
 
     function toElapsedTimeString(t)
     {
@@ -591,7 +629,10 @@
             //ctx.stroke();
             ctx.beginPath();
             //ctx.arc(x, y, 0.75, 0, 2*Math.PI, false);
-            ctx.arc(x, y, r*8, 0, 2*Math.PI, false);
+            if(r < 0.5){
+                r = 0.5;
+            }
+            ctx.arc(x, y, r, 0, 2*Math.PI, false);
             ctx.fill();
         });
 
@@ -616,36 +657,110 @@
                      height-8-2);
     }
 
-    var Conductor = function(){
+    var View = function()
+    {
+        var view = this;
+        this.centerX = 0;
+        this.centerY = 0;
+        this.scale = 1.0e-12;
         this.timerId = null;
-        this.dt = 3600;
+        this.clearRequested = false;
         this.space = null;
-        this.view = null;
-    }
-    Conductor.prototype = {
-        setTimeSlice: function(dt){ this.dt = dt;},
-        setSpace: function(space){ this.space = space;},
-        setView: function(view) { this.view = view;},
-        start: function(){
-            if(this.space && this.timerId == null){
-                var self = this;
-                this.timerId = setInterval(function(){self.onTime();}, 10);
+
+        // create a canvas
+        var cv = document.createElement("canvas");
+        cv.setAttribute("width", 480);
+        cv.setAttribute("height", 480);
+        cv.style.cssText = "border: 1px solid;";
+        var ctx = cv.getContext("2d");
+        ctx.fillRect(0, 0, cv.width, cv.height);
+        this.getCanvas = function(){ return cv;};
+        this.getContext2D = function(){ return ctx;};
+
+        // zoom by mouse wheel
+        function zoomByMouseWheel(e){
+            var delta = e.wheelDelta ? e.wheelDelta / 120
+                : e.detail ? e.detail / 3
+                : 0;
+            if(delta < 0){
+                view.zoom(0.5);
             }
-        },
-        stop: function(){
-            if(this.timerId != null){
-                clearInterval(this.timerId);
-                this.timerId = null;
+            else if(delta > 0){
+                view.zoom(2);
             }
-        },
-        onTime: function(){
-            if(this.space){
-                this.space.step(this.dt);
-                if(this.view){
-                    this.view();
-                }
-            }
+            e.preventDefault();
         }
+        cv.addEventListener("DOMMouseScroll", zoomByMouseWheel, false);
+        cv.addEventListener("mousewheel", zoomByMouseWheel, false); //chrome
+
+        // scroll by mouse dragging
+        function beginMouseDragScroll(e){
+            function moveMouseDragScroll(e){
+                pos1 = Util.getMousePosOnElement(cv, e);
+                view.setCenterXY(
+                    viewPos0[0] - (pos1[0] - pos0[0])/view.getScale(),
+                    viewPos0[1] + (pos1[1] - pos0[1])/view.getScale() );
+            }
+            function endMouseDragScroll(e){
+                cv.removeEventListener("mousemove", moveMouseDragScroll, true);
+                cv.removeEventListener("mouseup", endMouseDragScroll, true);
+            }
+            var viewPos0 = [view.getCenterX(), view.getCenterY()];
+            var pos0 = Util.getMousePosOnElement(cv, e);
+            var pos1 = pos0;
+            cv.addEventListener("mousemove", moveMouseDragScroll, true);
+            cv.addEventListener("mouseup", endMouseDragScroll, true);
+        }
+        cv.addEventListener("mousedown", beginMouseDragScroll, false);
+    };
+    View.prototype = {
+        getScale: function() { return this.scale;},
+        getCenterX: function() { return this.centerX;},
+        getCenterY: function() { return this.centerY;},
+        zoom: function(s){
+            this.scale *= s;
+            this.invalidateAndClear();
+        },
+        setScale: function(s){
+            this.scale = s;
+            this.invalidateAndClear();
+        },
+        setCenterXY: function(x, y){
+            this.centerX = x;
+            this.centerY = y;
+            this.invalidateAndClear();
+        },
+        setSpace: function(space){
+            this.space = space;
+            this.invalidateAndClear();
+        },
+        invalidate: function(){
+            if(this.timerId == null){
+                var self = this;
+                setTimeout(function(){self.onPaint();}, 4);
+            }
+        },
+        invalidateAndClear: function(){
+            this.clearRequested = true;
+            this.invalidate();
+        },
+        onPaint: function() {
+            this.timerId = null;
+            if(this.clearRequested){
+                this.clearRequested = false;
+                this.clearCanvas();
+            }
+            drawSpace(this.getCanvas(), this.getContext2D(),
+                      this.space,
+                      this.getScale(),
+                      this.getCenterX(), this.getCenterY());
+        },
+        clearCanvas: function() {
+            var cv = this.getCanvas();
+            var ctx = this.getContext2D();
+            ctx.fillStyle = "rgb(0, 0, 0)";
+            ctx.fillRect(0, 0, cv.width, cv.height);
+        },
     };
     
 
@@ -654,46 +769,9 @@
         conductor.setTimeSlice(3600*1);
         
         // create a canvas.
-        var cv = document.createElement("canvas");
-        cv.setAttribute("width", 480);
-        cv.setAttribute("height", 480);
-        cv.style.cssText = "border: 1px solid;";
+        var view = new View();
+        var cv = view.getCanvas();
         document.body.appendChild(cv);
-        var ctx = cv.getContext("2d");
-        ctx.fillRect(0, 0, cv.width, cv.height);
-
-        function zoomByMouseWheel(e){
-            var delta = e.wheelDelta ? e.wheelDelta / 120
-                : e.detail ? e.detail / 3
-                : 0;
-            if(delta < 0){
-                viewScale *= 0.5;
-            }
-            else if(delta > 0){
-                viewScale *= 2;
-            }
-            e.preventDefault();
-        }
-        cv.addEventListener("DOMMouseScroll", zoomByMouseWheel, false);
-        cv.addEventListener("mousewheel", zoomByMouseWheel, false); //chrome
-
-        function beginMouseDragScroll(e){
-            function moveMouseDragScroll(e){
-                pos1 = Util.getMousePosOnElement(cv, e);
-                viewX = viewPos0[0] - (pos1[0] - pos0[0])/viewScale;
-                viewY = viewPos0[1] + (pos1[1] - pos0[1])/viewScale;
-            }
-            function endMouseDragScroll(e){
-                cv.removeEventListener("mousemove", moveMouseDragScroll, true);
-                cv.removeEventListener("mouseup", endMouseDragScroll, true);
-            }
-            var viewPos0 = [viewX, viewY];
-            var pos0 = Util.getMousePosOnElement(cv, e);
-            var pos1 = pos0;
-            cv.addEventListener("mousemove", moveMouseDragScroll, true);
-            cv.addEventListener("mouseup", endMouseDragScroll, true);
-        }
-        cv.addEventListener("mousedown", beginMouseDragScroll, false);
 
         // create a controller.
         var stopButton;
@@ -715,39 +793,17 @@
         //var space = createSpaceSwingBy2();
         //var space = createSpaceSolarSystem();
         conductor.setSpace(space);
-        conductor.setView(function(){drawSpace(cv, ctx, space, viewScale, viewX, viewY);});
+        view.setSpace(space);
+        conductor.setView(function(){view.invalidate();});
 
         //
-        var viewScale = (cv.width/2)/
-//            2.0e12;
-//            1.0e12;
-            2.0e11;
-//            3.0e10;
-        var viewX = 0;
-        var viewY = 0;
-        drawSpace(cv, ctx, space, viewScale, viewX, viewY);
-/*
-        setInterval(function(){
-//            for(var i = 0; i < 80; ++i){
-//                space.step(3600*0.125);
-//            }
-            space.step(3600*1);
-            drawSpace(cv, ctx, space);
+        view.setScale((cv.width/2)/
+//            2.0e12
+//            1.0e12
+            2.0e11
+//            3.0e10
+                     );
 
-//             document.body.appendChild(document.createElement("br"));
-//             document.body.appendChild(document.createTextNode(
-//                 space.objects[0].position[0] + "\t"+
-//                 space.objects[0].position[1] + "\t"+
-//                 space.objects[0].velocity[0] + "\t"+
-//                 space.objects[0].velocity[1] + "\t"+
-//                 space.objects[1].position[0] + "\t"+
-//                 space.objects[1].position[1] + "\t"+
-//                 space.objects[1].velocity[0] + "\t"+
-//                 space.objects[1].velocity[1] + "\t"
-//             ));
-
-        }, 10);
-*/
     }
     
     thispkg.App = {
