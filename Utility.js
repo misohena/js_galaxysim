@@ -1,12 +1,5 @@
 (function(){
-    function package(){
-        var t = this;
-        for(var i = 0; i < arguments.length; ++i){
-            t = t[arguments[i]] || (t[arguments[i]]={});
-        }
-        return t;
-    }
-    var thispkg = package("Misohena", "galaxysim");
+    var thispkg = Misohena.package("Misohena", "galaxysim");
 
     // -----------------------------------------------------------------------
     // * HTML Utilities
