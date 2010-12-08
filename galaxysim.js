@@ -125,6 +125,7 @@
         this.acceleration = Vector.newZero();
         this.phi = 0;
         this.next = null; // for linked list.
+        this.eventListeners = {};
     };
     SpaceObject.prototype = {
         destroy: function(){
@@ -156,6 +157,8 @@
             this.velocity = newVel;
             ///@todo
             // acceleration
+
+            o.dispatchEvent({type:"merged", mergeTarget:this});
         },
         predict: function(dt){
             Vector.addMul(this.position, dt, this.velocity,
@@ -174,6 +177,32 @@
 //            Vector.addMul(this.velocity, dt, this.acceleration,  this.velocity);
 //            Vector.addMul(this.position, dt, this.velocity,  this.position);
 //        }
+        addEventListener: function(type, listener){
+            var list = this.eventListeners[type];
+            if(!list){
+                list = this.eventListeners[type] = [];
+            }
+            if(list.indexOf(listener) == -1){
+                list.push(listener);
+            }
+        },
+        removeEventListener: function(type, listener){
+            var list = this.eventListeners[type];
+            if(list){
+                var index = list.indexOf(listener);
+                if(index != -1){
+                    list.splice(index, 1);
+                }
+            }
+        },
+        dispatchEvent: function(e){
+            var list = this.eventListeners[e.type];
+            if(list){
+                for(var i = 0; i < list.length; ++i){
+                    list[i](e);
+                }
+            }
+        }
     };
 
     
@@ -329,7 +358,21 @@
             stepObjects(dt, this.objects, this.eps2, this.theta2);
             removeDestroyed(this.objects);
             this.time += dt;
-        }
+        },
+
+        findObjectOnCircle: function(center, radius, func){
+            ///@todo できればツリーを使いたい。ツリーを残しておく実装にしないと。今はマウスクリック時にしか使わないので、それほど重要ではない。
+            for(var i = 0; i < this.objects.length; ++i){
+                var obj = this.objects[i];
+                if(!obj.isDestroyed()){
+                    var distSq = Vector.distanceSq(obj.position, center);
+                    var sumRadius = obj.radius + radius;
+                    if(distSq < sumRadius*sumRadius){
+                        func(obj, Math.sqrt(distSq));
+                    }
+                }
+            }
+        },
     };
     function removeDestroyed(objects)
     {
@@ -539,30 +582,6 @@
             //space.addObject(new SpaceObject(, , Vector.newOnX(), Vector.newOnY()));
             return space;
         }, scale:5e-13},
-        {title:"Random", factory:function(){
-            function createObjectRandom()
-            {
-                //var radius = 1e4 + Math.random() * 6.96e8;
-                //var mass = radius*radius*radius*1e3;
-                //var radius = 1e4 + Math.random() * 7e7;
-                var radius = 7e7;
-                var mass = radius*radius*radius*5536;
-                var pos = randomPositionInCircle();
-                Vector.mul(8.0e10, pos, pos);
-                var vx = 0;//Math.random()*29780*(Math.random()<0.5 ? 1 : -1);
-                var vy = 0;//Math.random()*29780*(Math.random()<0.5 ? 1 : -1);
-                return new SpaceObject(
-                    mass, radius,
-                    pos,
-                    Vector.newXY(vx, vy)
-                );
-            }
-            var space = new Space();
-            for(var i = 0; i < 1000; ++i){
-                space.addObject(createObjectRandom());
-            }
-            return space;
-        }},
         {title:"Test Collision", factory:function(){
             var space = new Space();
             space.addObject(new SpaceObject(1e28, 6e8, Vector.newXY(-1e11, -1e11), Vector.newXY(29780, 29780)));
@@ -593,6 +612,54 @@
                 1.899e27, 142984000/2,
                 Vector.newXY(0, -3e10),
                 Vector.newXY(3890+200, 10000)));
+            return space;
+        }},
+        {title:"Random 100", factory:function(){
+            function createObjectRandom()
+            {
+                //var radius = 1e4 + Math.random() * 6.96e8;
+                //var mass = radius*radius*radius*1e3;
+                //var radius = 1e4 + Math.random() * 7e7;
+                var radius = 7e7;
+                var mass = radius*radius*radius*5536;
+                var pos = randomPositionInCircle();
+                Vector.mul(8.0e10, pos, pos);
+                var vx = 0;//Math.random()*29780*(Math.random()<0.5 ? 1 : -1);
+                var vy = 0;//Math.random()*29780*(Math.random()<0.5 ? 1 : -1);
+                return new SpaceObject(
+                    mass, radius,
+                    pos,
+                    Vector.newXY(vx, vy)
+                );
+            }
+            var space = new Space();
+            for(var i = 0; i < 100; ++i){
+                space.addObject(createObjectRandom());
+            }
+            return space;
+        }},
+        {title:"Random 1000", factory:function(){
+            function createObjectRandom()
+            {
+                //var radius = 1e4 + Math.random() * 6.96e8;
+                //var mass = radius*radius*radius*1e3;
+                //var radius = 1e4 + Math.random() * 7e7;
+                var radius = 7e7;
+                var mass = radius*radius*radius*5536;
+                var pos = randomPositionInCircle();
+                Vector.mul(8.0e10, pos, pos);
+                var vx = 0;//Math.random()*29780*(Math.random()<0.5 ? 1 : -1);
+                var vy = 0;//Math.random()*29780*(Math.random()<0.5 ? 1 : -1);
+                return new SpaceObject(
+                    mass, radius,
+                    pos,
+                    Vector.newXY(vx, vy)
+                );
+            }
+            var space = new Space();
+            for(var i = 0; i < 1000; ++i){
+                space.addObject(createObjectRandom());
+            }
             return space;
         }},
     ];
@@ -661,6 +728,9 @@
         this.clearRequested = false;
         this.space = null;
         this.visibleAxis = false;
+        this.enabledBlur = true;
+
+        this.trackingTarget = null;
 
         // create a canvas
         var cv = document.createElement("canvas");
@@ -707,12 +777,58 @@
             cv.addEventListener("mouseup", endMouseDragScroll, true);
         }
         cv.addEventListener("mousedown", beginMouseDragScroll, false);
+
+        // select tracking target by clicking
+        cv.addEventListener("mousedown", function(e){
+            cv.removeEventListener("mouseup", endMouseDown, true);
+            var pos0 = Util.getMousePosOnElement(cv, e);
+            function endMouseDown(e){
+                var pos1 = Util.getMousePosOnElement(cv, e);
+                if(Math.abs(pos1[0]-pos0[0]) < 2 && Math.abs(pos1[1]-pos0[1]) < 2){
+                    var x =  (pos1[0] - 0.5*view.getCanvas().width)/view.getScale() + view.getCenterX();
+                    var y = -(pos1[1] - 0.5*view.getCanvas().height)/view.getScale() + view.getCenterY();
+                    var r = 3/view.getScale();
+                    var space = view.getSpace();
+                    if(space){
+                        var selectedObj = null;
+                        var selectedObjDist = 0;
+                        space.findObjectOnCircle(Vector.newXY(x, y), r, function(obj, dist){
+                            if(!selectedObj || dist < selectedObjDist){
+                                selectedObj = obj;
+                                selectedObjDist = dist;
+                            }
+                        });
+                        if(selectedObj){
+                            view.setTrackingTarget(selectedObj);
+                        }
+                        else{
+                            view.setTrackingTarget(null);
+                        }
+                    }
+                }
+            }
+            cv.addEventListener("mouseup", endMouseDown, true);
+            
+        }, false);
+
+
+        this.onMergedTrackingTargetStatic = function(e){
+            view.onMergedTrackingTarget(e);
+        };
     };
     View.prototype = {
+        getSpace: function() { return this.space;},
         getScale: function() { return this.scale;},
         getCenterX: function() { return this.centerX;},
         getCenterY: function() { return this.centerY;},
         getVisibleAxis: function() { return this.visibleAxis;},
+        getEnabledBlur: function() { return this.enabledBlur;},
+        
+        setSpace: function(space){
+            this.setTrackingTarget(null);
+            this.space = space;
+            this.invalidateAndClear();
+        },
         zoom: function(s){
             this.scale *= s;
             this.invalidateAndClear();
@@ -726,18 +842,38 @@
             this.centerY = y;
             this.invalidateAndClear();
         },
-        setSpace: function(space){
-            this.space = space;
-            this.invalidateAndClear();
-        },
         setVisibleAxis: function(b){
             this.visibleAxis = b;
             this.invalidateAndClear();
         },
+        setEnabledBlur: function(b){
+            this.enabledBlur = b;
+            this.invalidateAndClear();
+        },
+        setTrackingTarget: function(obj){
+            this.setTrackingTargetInternal(obj);
+            this.invalidateAndClear();
+        },
+        setTrackingTargetInternal: function(obj){
+            var view = this;
+            if(this.trackingTarget){
+                this.trackingTarget.removeEventListener("merged", view.onMergedTrackingTargetStatic);
+            }
+            this.trackingTarget = obj;
+            if(this.trackingTarget){
+                this.trackingTarget.addEventListener("merged", view.onMergedTrackingTargetStatic);
+            }
+        },
+        onMergedTrackingTarget: function(e){
+            //change tracking target to collided object.
+            this.setTrackingTargetInternal(e.mergeTarget);
+        },
+        
+        
         invalidate: function(){
             if(this.timerId == null){
                 var self = this;
-                setTimeout(function(){self.onPaint();}, 4);
+                this.timerId = setTimeout(function(){self.onPaint();}, 4);
             }
         },
         invalidateAndClear: function(){
@@ -751,7 +887,12 @@
                 this.clearCanvas();
             }
 
-            this.clearCanvas(0.01);
+            if(this.trackingTarget){
+                this.centerX = Vector.getX(this.trackingTarget.position);
+                this.centerY = Vector.getY(this.trackingTarget.position);
+            }
+
+            this.clearCanvas(this.enabledBlur ? 0.01 : 1);
             if(this.visibleAxis){
                 this.drawAxis();
             }
@@ -882,6 +1023,7 @@
         var initButton;
         var startButton;
         var visibleAxisCheckbox;
+        var enabledBlurCheckbox;
         var timesliceTextbox;
         var epsilonTextbox;
         var thetaTextbox;
@@ -891,6 +1033,8 @@
             startButton = HTML.button("Start/Stop"),
             visibleAxisCheckbox = HTML.checkbox(view.getVisibleAxis()),
             HTML.text("Axis"),
+            enabledBlurCheckbox = HTML.checkbox(view.getEnabledBlur()),
+            HTML.text("Blur"),
             HTML.br(),
             HTML.text("time slice:"),
             timesliceTextbox = HTML.textbox(""),
@@ -915,6 +1059,9 @@
         visibleAxisCheckbox.addEventListener("change", function(e){
             view.setVisibleAxis(!view.getVisibleAxis());
         }, false);
+        enabledBlurCheckbox.addEventListener("change", function(e){
+            view.setEnabledBlur(!view.getEnabledBlur());
+        }, false);
         timesliceTextbox.addEventListener("change", function(e){
             conductor.setTimeSlice(parseFloat(e.target.value));
         }, false);
@@ -935,6 +1082,7 @@
             var space = state.factory();
             conductor.setSpace(space);
             conductor.setTimeSlice(state.dt || DEFAULT_DT);
+            view.setTrackingTarget(null);
             view.setSpace(space);
             view.setScale(
                 (state.scale !== undefined) ? 0.5*Math.min(cv.width, cv.height)*state.scale : DEFAULT_VIEW_SCALE);
