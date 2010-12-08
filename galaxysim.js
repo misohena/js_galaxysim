@@ -5,22 +5,32 @@
 
     var HTML = thispkg.HTML;
     var Util = thispkg.Util;
+
+    var CANVAS_WIDTH = 480;
+    var CANVAS_HEIGHT = 480;
     
     var G = 6.67259e-11;
-    var EPS = 1e9;
-    var THETA = 0.75;
-    var EPS2 = EPS*EPS;
-    var THETA2 = THETA*THETA;
+    var DEFAULT_DT = 3600;
+    var DEFAULT_EPS = 1e9;
+    var DEFAULT_THETA = 0.75;
+    var DEFAULT_VIEW_SCALE = (CANVAS_WIDTH/2/2.0e11);
+    var DEFAULT_VIEW_X = 0;
+    var DEFAULT_VIEW_Y = 0;
 
-    //
-    // Vector Math Utilities
-    //
-    
+
+
+    /**
+     * Vector Math Utilities
+     */
     var Vector = {
         newZero: function(){ return [0, 0];},
         newOnX: function(x){ return [x, 0];},
         newOnY: function(y){ return [0, y];},
         newXY: function(x, y){ return [x, y];},
+        newClone: function(v) { return [v[0], v[1]];},
+
+        // binary operator
+        
         sub: function(a, b, dst){
             if(dst){
                 dst[0] = a[0] - b[0];
@@ -70,25 +80,107 @@
                 return [src[0], src[1]];
             }
         },
-        lengthSq: function(v) { return v[0]*v[0] + v[1]*v[1];},
-        length: function(v) { return Math.sqrt(v[0]*v[0] + v[1]*v[1]);},
         distanceSq: function(a, b) {
             var dx = a[0] - b[0];
             var dy = a[1] - b[1];
             return dx*dx+dy*dy;
         },
+        distance: function(a, b) {
+            var dx = a[0] - b[0];
+            var dy = a[1] - b[1];
+            return Math.sqrt(dx*dx+dy*dy);
+        },
         distanceLinf: function(a, b) { return Math.max(
             Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1]));},
+
+        // unary operator (return a scalar value)
+        
+        lengthSq: function(v) { return v[0]*v[0] + v[1]*v[1];},
+        length: function(v) { return Math.sqrt(v[0]*v[0] + v[1]*v[1]);},
+        lengthLinf: function(v) { return Math.max(Math.abs(v[0]), Math.abs(v[1]));},
+
+        // setter
+        
         setZero: function(v) { v[0] = v[1] = 0;},
+        setXY: function(v, x, y) { v[0] = x; v[1] = y;},
+        setX: function(v, x) { v[0] = x;},
+        setY: function(v, y) { v[1] = y;},
+
+        // getter
+        
         getX: function(v) { return v[0];},
         getY: function(v) { return v[1];}
     };
 
-    //
-    // class SpaceNode
-    //
+
+
+    /**
+     * class SpaceObject
+     */
+    var SpaceObject = thispkg.SpaceObject = function(mass, radius, pos, vel){
+        this.mass = mass;
+        this.radius = radius;
+        this.position = pos || Vector.newZero();
+        this.velocity = vel || Vector.newZero();
+        this.acceleration = Vector.newZero();
+        this.phi = 0;
+        this.next = null; // for linked list.
+    };
+    SpaceObject.prototype = {
+        destroy: function(){
+            this.mass = 0;
+            this.radius = 0;
+        },
+        isDestroyed: function(){
+            return this.mass <= 0;
+        },
+        merge: function(o){
+            var newMass = this.mass + o.mass;
+            var p = Vector.add(
+                Vector.mul(this.mass, this.velocity),
+                Vector.mul(o.mass, o.velocity));
+            var newVel = Vector.mul(1 / newMass, p);
+
+            var g = Vector.add(
+                Vector.mul(this.mass, this.position),
+                Vector.mul(o.mass, o.position));
+            var newPos = Vector.mul(1 / newMass, g);
+
+            var r1 = this.radius;
+            var r2 = o.radius;
+            var newRadius = Math.pow(r1*r1*r1 + r2*r2*r2, 1.0/3.0);
+            
+            this.mass = newMass;
+            this.radius = newRadius;
+            this.position = newPos;
+            this.velocity = newVel;
+            ///@todo
+            // acceleration
+        },
+        predict: function(dt){
+            Vector.addMul(this.position, dt, this.velocity,
+                          this.position);
+            Vector.addMul(this.position, 0.5*dt*dt, this.acceleration,
+                          this.position);
+            Vector.addMul(this.velocity, 0.5*dt, this.acceleration,
+                          this.velocity);
+        },
+        correct: function(dt){
+            Vector.addMul(this.velocity, 0.5*dt, this.acceleration,
+                          this.velocity);
+        },
+//        move: function(dt){
+//            if(this.isDestroyed()){return;}
+//            Vector.addMul(this.velocity, dt, this.acceleration,  this.velocity);
+//            Vector.addMul(this.position, dt, this.velocity,  this.position);
+//        }
+    };
+
     
-    var SpaceNode = thispkg.SpaceNode = function(nodeCenter, nodeSize){
+    /**
+     * class SpaceTreeNode
+     */
+    var SpaceTreeNode = thispkg.SpaceTreeNode = function(nodeCenter, nodeSize){
         this.center = nodeCenter;
         this.size = nodeSize; //length of edge
         this.subnodes = new Array(4);
@@ -97,7 +189,7 @@
         this.gravityCenter = Vector.newZero();
         this.gravityMass = 0;
     };
-    SpaceNode.prototype = {
+    SpaceTreeNode.prototype = {
         setObjects: function(firstObj){
             if(firstObj == null){
             }
@@ -129,7 +221,7 @@
                             (indexBits&1) ? qsize : -qsize,
                             (indexBits&2) ? qsize : -qsize);
                         Vector.add(snodeCenter, this.center,  snodeCenter);
-                        var snode = new SpaceNode(snodeCenter, 0.5*this.size);
+                        var snode = new SpaceTreeNode(snodeCenter, 0.5*this.size);
                         snode.setObjects(subnodeObjs[indexBits]);
                         this.subnodes[indexBits] = snode;
                     }
@@ -168,7 +260,7 @@
         {
             var v = Vector.sub(this.gravityCenter, obj.position);
             var r2 = Vector.lengthSq(v);
-            if(r2*theta2 > this.size*this.size || this.countObj == 1){
+            if(this.countObj == 1 || r2*theta2 > this.size*this.size){
                 var invR2 = 1 / (r2 + eps2);
                 var invR = Math.sqrt(invR2);
                 var invR3 = invR2 * invR;
@@ -212,7 +304,53 @@
         }
     };
 
-    //
+
+
+    /**
+     * class Space
+     */
+    var Space = thispkg.Space = function(){
+        this.objects = [];
+        this.time = 0;
+        
+        this.eps = DEFAULT_EPS;
+        this.eps2 = this.eps*this.eps;
+        
+        this.theta = DEFAULT_THETA;
+        this.theta2 = this.theta*this.theta;
+    };
+    Space.prototype = {
+        getEpsilon: function() { return this.eps;},
+        setEpsilon: function(v) { if(isFinite(v)){this.eps = v; this.eps2 = v*v;}},
+        getTheta: function() { return this.theta;},
+        setTheta: function(v) { if(isFinite(v)){this.theta = v; this.theta2 = v*v;}},
+        addObject: function(o) { this.objects.push(o);},
+        step: function(dt) {
+            stepObjects(dt, this.objects, this.eps2, this.theta2);
+            removeDestroyed(this.objects);
+            this.time += dt;
+        }
+    };
+    function removeDestroyed(objects)
+    {
+        var i;
+        for(i = 0; i < objects.length; ++i){
+            if(objects[i].isDestroyed()){
+                break;
+            }
+        }
+        if(i == objects.length){
+            return;
+        }
+        var j = i;
+        for(++i; i < objects.length; ++i){
+            if(!objects[i].isDestroyed()){
+                objects[j++] = objects[i];
+            }
+        }
+        objects.length = j;
+    }
+
     
     function maxDistLinf(objects)
     {
@@ -252,7 +390,7 @@
             return;
         }
         var rootNodeSize = maxDistLinf(objects);
-        var rootNode = new SpaceNode(Vector.newZero(), rootNodeSize*2);
+        var rootNode = new SpaceTreeNode(Vector.newZero(), rootNodeSize*2);
         rootNode.setObjects(objectArrayToLinkedList(objects));
         rootNode.updateCenterOfGravity();
         //console.log("nodes="+rootNode.countNodes());
@@ -268,7 +406,7 @@
             obj.phi = obj.mass / Math.sqrt(eps2);
             rootNode.accumulateGravityToObject(obj, eps2, theta2);
             Vector.mul(G, obj.acceleration,  obj.acceleration); //ここでGを掛けた方が実行効率はよいが、invR3〜のところで掛けた方がaccelerationの意味(単位)が明確かもしれない。
-            // find maximum radius
+            // find maximum object radius used for collision detection.
             if(maxRadius > obj.radius){
                 maxRadius = obj.radius;
             }
@@ -323,6 +461,7 @@
             }
             Vector.mul(G, obj1.acceleration, obj1.acceleration);
         }
+        ///@todo 衝突判定処理
     }
 
     // 全ての物体について、時間を進めます。
@@ -338,136 +477,11 @@
         }
     }
 
-    //
-    // class SpaceObject
-    //
-    var SpaceObject = thispkg.SpaceObject = function(mass, radius, pos, vel){
-        this.mass = mass;
-        this.radius = radius;
-        this.position = pos || Vector.newZero();
-        this.velocity = vel || Vector.newZero();
-        this.acceleration = Vector.newZero();
-        this.phi = 0;
-        this.next = null;
-    };
-    SpaceObject.prototype = {
-        destroy: function(){
-            this.mass = 0;
-            this.radius = 0;
-        },
-        isDestroyed: function(){
-            return this.mass <= 0;
-        },
-        merge: function(o){
-            var newMass = this.mass + o.mass;
-            var p = Vector.add(
-                Vector.mul(this.mass, this.velocity),
-                Vector.mul(o.mass, o.velocity));
-            var newVel = Vector.mul(1 / newMass, p);
 
-            var g = Vector.add(
-                Vector.mul(this.mass, this.position),
-                Vector.mul(o.mass, o.position));
-            var newPos = Vector.mul(1 / newMass, g);
-
-            var r1 = this.radius;
-            var r2 = o.radius;
-            var newRadius = Math.pow(r1*r1*r1 + r2*r2*r2, 1.0/3.0);
-            
-            this.mass = newMass;
-            this.radius = newRadius;
-            this.position = newPos;
-            this.velocity = newVel;
-            ///@todo
-            // acceleration
-        },
-        predict: function(dt){
-            Vector.addMul(this.position, dt, this.velocity,
-                          this.position);
-            Vector.addMul(this.position, 0.5*dt*dt, this.acceleration,
-                          this.position);
-            Vector.addMul(this.velocity, 0.5*dt, this.acceleration,
-                          this.velocity);
-        },
-        correct: function(dt){
-            Vector.addMul(this.velocity, 0.5*dt, this.acceleration,
-                          this.velocity);
-        },
-//        move: function(dt){
-//            if(this.isDestroyed()){return;}
-//            
-//            Vector.mul(1.0/this.mass, this.force,  this.acceleration);
-//            Vector.setZero(this.force);
-//            
-//            Vector.addMul(this.velocity, dt, this.acceleration,  this.velocity);
-//            Vector.addMul(this.position, dt, this.velocity,  this.position);
-//        }
-    };
 
     //
-    // class Space
+    // Preset Initial States
     //
-    var Space = thispkg.Space = function(){
-        this.objects = [];
-        this.time = 0;
-    };
-    Space.prototype = {
-        addObject: function(o) { this.objects.push(o);},
-        step: function(dt) {
-            stepObjects(dt, this.objects, EPS2, THETA2);
-            removeDestroyed(this.objects);
-            this.time += dt;
-        }
-    };
-
-    function removeDestroyed(objects)
-    {
-        var i;
-        for(i = 0; i < objects.length; ++i){
-            if(objects[i].isDestroyed()){
-                break;
-            }
-        }
-        if(i == objects.length){
-            return;
-        }
-        var j = i;
-        for(++i; i < objects.length; ++i){
-            if(!objects[i].isDestroyed()){
-                objects[j++] = objects[i];
-            }
-        }
-        objects.length = j;
-    }
-    
-
-    //
-    //
-    //
-    
-    function createSpaceSolarSystem()
-    {
-        var space = new Space();
-        // Sun
-        space.addObject(new SpaceObject(1.9891e30, 6.96e8, Vector.newZero()));
-        // Mercury
-        space.addObject(new SpaceObject(3.302e23, 4879400/2, Vector.newOnX(57910000000), Vector.newOnY(47872.5)));
-        // Venus
-        space.addObject(new SpaceObject(4.869e24, 12103600/2, Vector.newOnX(108208930000), Vector.newOnY(35021.4)));
-        // Earth
-        space.addObject(new SpaceObject(5.9736e24, 6.356752e3, Vector.newOnX(1.49597870e11), Vector.newOnY(29780)));
-        // Mars
-        space.addObject(new SpaceObject(6.419e23, 6794400/2, Vector.newOnX(227936640000), Vector.newOnY(24130.9)));
-        // Jupiter
-        space.addObject(new SpaceObject(1.899e27, 142984000/2, Vector.newOnX(778412010000), Vector.newOnY(13069.7)));
-        // Saturn
-        space.addObject(new SpaceObject(5.688e26, 120536000/2, Vector.newOnX(1426725400000), Vector.newOnY(9672.4)));
-        // Uranus
-        //space.addObject(new SpaceObject(, , Vector.newOnX(), Vector.newOnY()));
-        // Neptune
-        //space.addObject(new SpaceObject(, , Vector.newOnX(), Vector.newOnY()));
-        return space;
-    }
 
     function randomPositionInCircle()
     {
@@ -479,82 +493,126 @@
             }
         }
     }
+
+    function InitialState(title, factory, dt, viewScale, viewX, viewY){
+        this.title = title;
+        this.factory = factory;
+        this.dt = dt || DEFAULT_DT;
+        this.viewScale = viewScale || (CANVAS_WIDTH/2/2.0e11);
+        this.viewX = viewX || 0;
+        this.viewY = viewY || 0;
+    }
+
+    function enumInitialStateTitlesAsHTMLText(states){
+        return states.map(function(s) { return HTML.text(s.title);});
+    }
+/*
+        view.setScale((cv.width/2)/
+//            2.0e12
+//            1.0e12
+            2.0e11
+//            3.0e10
+                     );
+*/
     
-    function createSpaceRandom()
-    {
-        function createObjectRandom()
-        {
-            //var radius = 1e4 + Math.random() * 6.96e8;
-            //var mass = radius*radius*radius*1e3;
-            //var radius = 1e4 + Math.random() * 7e7;
-            var radius = 7e7;
-            var mass = radius*radius*radius*5536;
-            var pos = randomPositionInCircle();
-            Vector.mul(8.0e10, pos, pos);
-            var vx = 0;//Math.random()*29780*(Math.random()<0.5 ? 1 : -1);
-            var vy = 0;//Math.random()*29780*(Math.random()<0.5 ? 1 : -1);
-            return new SpaceObject(
-                mass, radius,
-                pos,
-                Vector.newXY(vx, vy)
-            );
-        }
-        var space = new Space();
-        for(var i = 0; i < 1000; ++i){
-            space.addObject(createObjectRandom());
-        }
-        return space;
-    }
+    var presetInitialStates = [
+        // Title, SpaceFactory, ViewScale, ViewX, ViewY
+        {title:"Pseudo-Solar System", factory:function(){
+            var space = new Space();
+            // Sun
+            space.addObject(new SpaceObject(1.9891e30, 6.96e8, Vector.newZero()));
+            // Mercury
+            space.addObject(new SpaceObject(3.302e23, 4879400/2, Vector.newOnX(57910000000), Vector.newOnY(47872.5)));
+            // Venus
+            space.addObject(new SpaceObject(4.869e24, 12103600/2, Vector.newOnX(108208930000), Vector.newOnY(35021.4)));
+            // Earth
+            space.addObject(new SpaceObject(5.9736e24, 6.356752e3, Vector.newOnX(1.49597870e11), Vector.newOnY(29780)));
+            // Mars
+            space.addObject(new SpaceObject(6.419e23, 6794400/2, Vector.newOnX(227936640000), Vector.newOnY(24130.9)));
+            // Jupiter
+            space.addObject(new SpaceObject(1.899e27, 142984000/2, Vector.newOnX(778412010000), Vector.newOnY(13069.7)));
+            // Saturn
+            space.addObject(new SpaceObject(5.688e26, 120536000/2, Vector.newOnX(1426725400000), Vector.newOnY(9672.4)));
+            // Uranus
+            //space.addObject(new SpaceObject(, , Vector.newOnX(), Vector.newOnY()));
+            // Neptune
+            //space.addObject(new SpaceObject(, , Vector.newOnX(), Vector.newOnY()));
+            return space;
+        }, scale:5e-13},
+        {title:"Random", factory:function(){
+            function createObjectRandom()
+            {
+                //var radius = 1e4 + Math.random() * 6.96e8;
+                //var mass = radius*radius*radius*1e3;
+                //var radius = 1e4 + Math.random() * 7e7;
+                var radius = 7e7;
+                var mass = radius*radius*radius*5536;
+                var pos = randomPositionInCircle();
+                Vector.mul(8.0e10, pos, pos);
+                var vx = 0;//Math.random()*29780*(Math.random()<0.5 ? 1 : -1);
+                var vy = 0;//Math.random()*29780*(Math.random()<0.5 ? 1 : -1);
+                return new SpaceObject(
+                    mass, radius,
+                    pos,
+                    Vector.newXY(vx, vy)
+                );
+            }
+            var space = new Space();
+            for(var i = 0; i < 1000; ++i){
+                space.addObject(createObjectRandom());
+            }
+            return space;
+        }},
+        {title:"Test Collision", factory:function(){
+            var space = new Space();
+            space.addObject(new SpaceObject(1e28, 6e8, Vector.newXY(-1e11, -1e11), Vector.newXY(29780, 29780)));
+            space.addObject(new SpaceObject(1e28, 6e8, Vector.newXY(1e11, -1e11), Vector.newXY(-29780, 29780)));
+            return space;
+        }},
+        {title:"Gravity Assisted Acc", factory:function(){
+            var space = new Space();
+            space.setEpsilon(1e2);
+            space.addObject(new SpaceObject(
+                1.899e27, 142984000/2,
+                Vector.newXY(5e10, 0),
+                Vector.newXY(-13069.7, 0)));
+            space.addObject(new SpaceObject(
+                1000, 10,
+                Vector.newXY(0, -3e10),
+                Vector.newXY(3800, 10000)));
+            return space;
+        }, dt:3600*0.5, scale:2e-11},
+        {title:"Same Mass Passing", factory:function(){
+            var space = new Space();
+            space.setEpsilon(1e3);
+            space.addObject(new SpaceObject(
+                1.899e27, 142984000/2,
+                Vector.newXY(5e10, 0),
+                Vector.newXY(-13069.7, 0)));
+            space.addObject(new SpaceObject(
+                1.899e27, 142984000/2,
+                Vector.newXY(0, -3e10),
+                Vector.newXY(3890+200, 10000)));
+            return space;
+        }},
+    ];
 
-    function createSpaceCollisionTest()
-    {
-        var space = new Space();
-        space.addObject(new SpaceObject(1e28, 6e8, Vector.newXY(-1e11, -1e11), Vector.newXY(29780, 29780)));
-        space.addObject(new SpaceObject(1e28, 6e8, Vector.newXY(1e11, -1e11), Vector.newXY(-29780, 29780)));
-        return space;
-    }
-
-    function createSpaceSwingBy()
-    {
-        var space = new Space();
-        space.addObject(new SpaceObject(
-            1.899e27, 142984000/2,
-            Vector.newXY(5e10, 0),
-            Vector.newXY(-13069.7, 0)));
-        space.addObject(new SpaceObject(
-            1000, 10,
-            Vector.newXY(0, -3e10),
-            Vector.newXY(3800, 10000)));
-        return space;
-    }
-
-    function createSpaceSwingBy2()
-    {
-        var space = new Space();
-        space.addObject(new SpaceObject(
-            1.899e27, 142984000/2,
-            Vector.newXY(5e10, 0),
-            Vector.newXY(-13069.7, 0)));
-        space.addObject(new SpaceObject(
-            1.899e27, 142984000/2,
-            Vector.newXY(0, -3e10),
-            Vector.newXY(3890+200, 10000)));
-        return space;
-    }
 
 
-    //
-    // class Conductor
-    //
-    
+    /**
+     * class Conductor
+     */
     var Conductor = function(){
         this.timerId = null;
-        this.dt = 3600;
+        this.dt = DEFAULT_DT;
         this.space = null;
         this.view = null;
     };
     Conductor.prototype = {
-        setTimeSlice: function(dt){ this.dt = dt;},
+        getTimeSlice: function() { return this.dt;},
+        getSpace: function() { return this.space;},
+        
+        setTimeSlice: function(dt){ if(isFinite(dt)){this.dt = dt;}},
         setSpace: function(space){ this.space = space;},
         setView: function(view) { this.view = view;},
         start: function(){
@@ -569,6 +627,16 @@
                 this.timerId = null;
             }
         },
+        toggleStartStop: function(){
+            if(this.timerId == null){
+                this.start();
+                return true;
+            }
+            else{
+                this.stop();
+                return false;
+            }
+        },
         onTime: function(){
             if(this.space){
                 this.space.step(this.dt);
@@ -579,92 +647,26 @@
         }
     };
 
-    //
-    // class View
-    //
 
-    function toElapsedTimeString(t)
-    {
-        var days = Math.floor(t / (24*60*60));
-        t -= days*(24*60*60);
-        var hour = Math.floor(t / (60*60));
-        t -= hour*(60*60);
-        var min = Math.floor(t / 60);
-        t -= min*60;
-        var sec = t;
-
-        return days+"days "+
-            ("0"+hour).slice(-2)+"h"+
-            ("0"+min).slice(-2)+"m"+
-            sec+"s";
-    }
-    
-    function drawSpace(cv, ctx, space, viewScale, viewX, viewY)
-    {
-        var width = cv.width;
-        var height = cv.height;
-        var scale = viewScale;
-
-        //ctx.clearRect(0, 0, width, height);
-        ctx.fillStyle = "rgba(0,0,0, 0.01)";
-        ctx.fillRect(0, 0, width, height);
-        
-        ctx.fillStyle = "rgb(255,255,255)";
-        space.objects.forEach(function(o){
-            if(o.isDestroyed()){
-                return;
-            }
-            var x = width/2 + (Vector.getX(o.position) - viewX) * scale;
-            var y = height/2 - (Vector.getY(o.position) - viewY) * scale;
-            var r = o.radius * scale;
-            //ctx.beginPath();
-            //ctx.arc(x, y, r, 0, 2*Math.PI, false);
-            //ctx.stroke();
-            ctx.beginPath();
-            //ctx.arc(x, y, 0.75, 0, 2*Math.PI, false);
-            if(r < 0.5){
-                r = 0.5;
-            }
-            ctx.arc(x, y, r, 0, 2*Math.PI, false);
-            ctx.fill();
-        });
-
-        // Status
-        var statusText = "objects:"+space.objects.length +
-            " time:"+toElapsedTimeString(space.time);
-        ctx.fillStyle = "rgb(128,128,128)";
-        ctx.fillRect(0, 0, ctx.measureText(statusText).width, 16);
-        ctx.font = "16px";
-        ctx.fillStyle = "rgb(255,255,255)";
-        ctx.fillText(statusText, 0, 16);
-
-        // Scale
-        var barLenText = (0.25*width/scale).toExponential()+"m";
-        ctx.strokeStyle = "rgb(255,255,255)";
-        ctx.beginPath();
-        ctx.moveTo(0.25*width, height-8);
-        ctx.lineTo(0.5*width, height-8);
-        ctx.stroke();
-        ctx.fillText(barLenText,
-                     0.25*width + 0.5*(0.25*width-ctx.measureText(barLenText).width),
-                     height-8-2);
-    }
-
+    /**
+     * class View
+     */
     var View = function()
     {
         var view = this;
-        this.centerX = 0;
-        this.centerY = 0;
-        this.scale = 1.0e-12;
+        this.centerX = DEFAULT_VIEW_X;
+        this.centerY = DEFAULT_VIEW_Y;
+        this.scale = DEFAULT_VIEW_SCALE;
         this.timerId = null;
         this.clearRequested = false;
         this.space = null;
+        this.visibleAxis = false;
 
         // create a canvas
         var cv = document.createElement("canvas");
-        cv.setAttribute("width", 480);
-        cv.setAttribute("height", 480);
-        cv.style.cssText = "border: 1px solid;";
+        cv.setAttribute("width", CANVAS_WIDTH);
+        cv.setAttribute("height", CANVAS_HEIGHT);
+        cv.style.cssText = "border: 1px solid; background: #000;";
         var ctx = cv.getContext("2d");
         ctx.fillRect(0, 0, cv.width, cv.height);
         this.getCanvas = function(){ return cv;};
@@ -673,7 +675,7 @@
         // zoom by mouse wheel
         function zoomByMouseWheel(e){
             var delta = e.wheelDelta ? e.wheelDelta / 120
-                : e.detail ? e.detail / 3
+                : e.detail ? e.detail / -3
                 : 0;
             if(delta < 0){
                 view.zoom(0.5);
@@ -710,6 +712,7 @@
         getScale: function() { return this.scale;},
         getCenterX: function() { return this.centerX;},
         getCenterY: function() { return this.centerY;},
+        getVisibleAxis: function() { return this.visibleAxis;},
         zoom: function(s){
             this.scale *= s;
             this.invalidateAndClear();
@@ -725,6 +728,10 @@
         },
         setSpace: function(space){
             this.space = space;
+            this.invalidateAndClear();
+        },
+        setVisibleAxis: function(b){
+            this.visibleAxis = b;
             this.invalidateAndClear();
         },
         invalidate: function(){
@@ -743,60 +750,201 @@
                 this.clearRequested = false;
                 this.clearCanvas();
             }
-            drawSpace(this.getCanvas(), this.getContext2D(),
-                      this.space,
-                      this.getScale(),
-                      this.getCenterX(), this.getCenterY());
+
+            this.clearCanvas(0.01);
+            if(this.visibleAxis){
+                this.drawAxis();
+            }
+            this.drawObjects();
+            this.drawStatus();
+            this.drawScaleBar();
         },
-        clearCanvas: function() {
+        clearCanvas: function(alpha) {
+            if(alpha === undefined){
+                alpha = 1;
+            }
             var cv = this.getCanvas();
             var ctx = this.getContext2D();
-            ctx.fillStyle = "rgb(0, 0, 0)";
+            ctx.fillStyle = "rgba(0, 0, 0, "+alpha+")";
             ctx.fillRect(0, 0, cv.width, cv.height);
         },
+        drawAxis: function(){
+            var cv = this.getCanvas();
+            var ctx = this.getContext2D();
+            var scale = this.getScale();
+            var viewX = this.getCenterX();
+            var viewY = this.getCenterY();
+
+            ctx.lineWidth = 0.75;
+            if(Math.abs(viewX) < 0.5*cv.width/scale){
+                var x = cv.width/2+(0-viewX)*scale;
+                ctx.strokeStyle = "rgb(128,0,0)";
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, cv.height);
+                ctx.stroke();
+            }
+            if(Math.abs(viewY) < 0.5*cv.height/scale){
+                var y = cv.height/2-(0-viewY)*scale;
+                ctx.strokeStyle = "rgb(0,128,0)";
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(cv.width, y);
+                ctx.stroke();
+            }
+            
+        },
+        drawObjects: function(){
+            var cv = this.getCanvas();
+            var ctx = this.getContext2D();
+            var space = this.space;
+            var scale = this.getScale();
+            var viewX = this.getCenterX();
+            var viewY = this.getCenterY();
+
+            ctx.fillStyle = "rgb(255,255,255)";
+            for(var i = 0; i < space.objects.length; ++i){
+                var o = space.objects[i];
+                if(o.isDestroyed()){
+                    return;
+                }
+                var x = cv.width/2 + (Vector.getX(o.position) - viewX) * scale;
+                var y = cv.height/2 - (Vector.getY(o.position) - viewY) * scale;
+                var r = o.radius * scale;
+                if(r < 0.7){
+                    r = 0.7;
+                }
+                ctx.beginPath();
+                ctx.arc(x, y, r, 0, 2*Math.PI, false);
+                ctx.fill();
+            };
+        },
+        drawStatus: function(){
+            var cv = this.getCanvas();
+            var ctx = this.getContext2D();
+            var space = this.space;
+            
+            var statusText = "objects:"+space.objects.length +
+                " time:"+toElapsedTimeString(space.time);
+            ctx.fillStyle = "rgb(128,128,128)";
+            ctx.fillRect(0, 0, ctx.measureText(statusText).width, 16);
+            ctx.font = "16px";
+            ctx.fillStyle = "rgb(255,255,255)";
+            ctx.fillText(statusText, 0, 16);
+        },
+        drawScaleBar: function(){
+            var cv = this.getCanvas();
+            var ctx = this.getContext2D();
+            var scale = this.getScale();
+            
+            var barLenText = (0.25*cv.width/scale).toExponential()+"m";
+            ctx.strokeStyle = "rgb(255,255,255)";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(0.25*cv.width, cv.height-8);
+            ctx.lineTo(0.5*cv.width, cv.height-8);
+            ctx.stroke();
+            ctx.fillText(barLenText,
+                         0.25*cv.width + 0.5*(0.25*cv.width-ctx.measureText(barLenText).width),
+                         cv.height-8-2);
+        }
     };
+
+    function toElapsedTimeString(t)
+    {
+        var days = Math.floor(t / (24*60*60));
+        t -= days*(24*60*60);
+        var hour = Math.floor(t / (60*60));
+        t -= hour*(60*60);
+        var min = Math.floor(t / 60);
+        t -= min*60;
+        var sec = Math.floor(t);
+
+        return days+"days "+
+            ("0"+hour).slice(-2)+"h"+
+            ("0"+min).slice(-2)+"m"+
+            ("0"+sec).slice(-2)+"s";
+    }
+    
     
 
     function main() {
         var conductor = new Conductor();
-        conductor.setTimeSlice(3600*1);
         
         // create a canvas.
         var view = new View();
+        conductor.setView(function(){view.invalidate();});
         var cv = view.getCanvas();
         document.body.appendChild(cv);
 
-        // create a controller.
-        var stopButton;
+        // create a control.
+        var initStateSelect;
+        var initButton;
         var startButton;
+        var visibleAxisCheckbox;
+        var timesliceTextbox;
+        var epsilonTextbox;
+        var thetaTextbox;
         var controlDiv = HTML.div({}, [
-            stopButton = HTML.button("stop"),
-            startButton = HTML.button("start")
+            initStateSelect = HTML.select(enumInitialStateTitlesAsHTMLText(presetInitialStates)),
+            initButton = HTML.button("Init"),
+            startButton = HTML.button("Start/Stop"),
+            visibleAxisCheckbox = HTML.checkbox(view.getVisibleAxis()),
+            HTML.text("Axis"),
+            HTML.br(),
+            HTML.text("time slice:"),
+            timesliceTextbox = HTML.textbox(""),
+            HTML.text("second"),
+            HTML.br(),
+            HTML.text("epsilon:"),
+            epsilonTextbox = HTML.textbox(""),
+            HTML.text("meter (potential=G*m/sqrt(r^2+epsilon^2))"),
+            HTML.br(),
+            HTML.text("theta:"),
+            thetaTextbox = HTML.textbox(""),
         ]);
         document.body.appendChild(controlDiv);
 
-        
-        stopButton.addEventListener("click", function(e){conductor.stop();}, false);
-        startButton.addEventListener("click", function(e){conductor.start();}, false);
+        initButton.addEventListener("click", function(e){
+            conductor.stop();
+            initSpace(presetInitialStates[initStateSelect.selectedIndex]);
+        }, false);
+        startButton.addEventListener("click", function(e){
+            conductor.toggleStartStop();
+        }, false);
+        visibleAxisCheckbox.addEventListener("change", function(e){
+            view.setVisibleAxis(!view.getVisibleAxis());
+        }, false);
+        timesliceTextbox.addEventListener("change", function(e){
+            conductor.setTimeSlice(parseFloat(e.target.value));
+        }, false);
+        epsilonTextbox.addEventListener("change", function(e){
+            conductor.getSpace().setEpsilon(parseFloat(e.target.value));
+        }, false);
+        thetaTextbox.addEventListener("change", function(e){
+            conductor.getSpace().setTheta(parseFloat(e.target.value));
+        }, false);
 
-        // create a document.
-        //var space = createSpaceCollisionTest();
-        var space = createSpaceRandom();
-        //var space = createSpaceSwingBy();
-        //var space = createSpaceSwingBy2();
-        //var space = createSpaceSolarSystem();
-        conductor.setSpace(space);
-        view.setSpace(space);
-        conductor.setView(function(){view.invalidate();});
+        function updateTextbox(){
+            timesliceTextbox.value = conductor.getTimeSlice();
+            epsilonTextbox.value = conductor.getSpace().getEpsilon().toExponential();
+            thetaTextbox.value = conductor.getSpace().getTheta();
+        }
 
-        //
-        view.setScale((cv.width/2)/
-//            2.0e12
-//            1.0e12
-            2.0e11
-//            3.0e10
-                     );
+        function initSpace(state){
+            var space = state.factory();
+            conductor.setSpace(space);
+            conductor.setTimeSlice(state.dt || DEFAULT_DT);
+            view.setSpace(space);
+            view.setScale(
+                (state.scale !== undefined) ? 0.5*Math.min(cv.width, cv.height)*state.scale : DEFAULT_VIEW_SCALE);
+            view.setCenterXY(
+                state.viewX || DEFAULT_VIEW_X,
+                state.viewY || DEFAULT_VIEW_Y);
+            updateTextbox();
+        }
 
+        initSpace(presetInitialStates[0]);
     }
     
     thispkg.App = {
