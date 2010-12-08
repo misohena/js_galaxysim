@@ -52,7 +52,7 @@
         checkbox: function(checked, attrs){
             if(checked){
                 return HTML.createElement("input", mergeObject({
-                    "type": "bheckbox",
+                    "type": "checkbox",
                     "checked": "checked"}, attrs));
             }
             else{
