@@ -409,6 +409,16 @@
             stepObjects(dt, this.objects, this.eps2, this.theta2);
             removeDestroyed(this.objects);
             this.time += dt;
+            
+            this.dispatchEvent({type:"step", target:this, dt:dt});
+            this.dispatchObjectChangedEvent();
+        },
+        dispatchObjectChangedEvent: function(){
+            // stepや編集によって空間内の物体が変化したことを伝える。
+            // 効率のためSpaceObjectに更新通知のためのメカニズムを実装しない。
+            // SpaceObjectを直接変更した場合は、その後に必ずこのメソッドを呼ばなければならない。
+            // 1つの変更につき1回呼ばなくても良い。複数変更した後に1回呼べば良い。
+            this.dispatchEvent({type:"objectchanged", target:this});
         },
 
         findObjectOnCircle: function(center, radius, func){
@@ -425,6 +435,7 @@
             }
         },
     };
+    EventDispatcher.addMethodTo(Space.prototype);
     function removeDestroyed(objects)
     {
         var i;
