@@ -1,0 +1,23 @@
+/* window */
+div.window {
+   background-color: #ffffff;
+   border-width: 2px;
+   border-style: solid;
+   border-color: black;
+   padding: 0.2em 1em 1em 1em;
+
+   position: absolute;
+   top: 10px;
+   left: 490px;
+}
+
+div.window select {
+   width: 100%;
+}
+div.window-caption {
+   cursor: move;
+   margin-bottom: 1em;
+   border-style: solid;
+   border-width: 1px;
+   border-color: black;
+}

@@ -1,5 +1,20 @@
 // -*- coding: utf-8 -*-
 
+// TODO: 追跡モードが解除できないのを何とかする。
+// TODO: openObjectPropertyWindowで位置を少しずつずらす。
+// TODO: EditModeで選択中の物体を円で囲み、速度ベクトルを表示する。それを使って速度ベクトルを変更できるようにする。
+// TODO: EditMode時にEditModeWindowを表示する。物体の追加や状態の保存・復元ができる。
+// TODO: 新しい物体を追加できるようにする。
+// TODO: スクリプトから新しい物体を追加できるようにする。
+// TODO: プリセット空間に空の空間を追加する。
+// TODO: 現在の状態をテキストに出力できるようにする。
+// TODO: jsonテキストから状態を復元できるようにする。
+// TODO: 現在の状態をクッキーに出力できるようにする。
+// TODO: View下のコントロールを枠で囲む。
+// TODO: jsファイルを分割する。シミュレーションのコア部分をspace.jsへ。プリセット状態はpresets.jsへ。
+// TODO: index.htmlを書く。
+// TODO: 公開する。
+
 (function(){
     var thispkg = Misohena.package("Misohena", "galaxysim");
 
@@ -21,6 +36,95 @@
     //
     // Utilities
     //
+    /**
+     * マウス一筆書きで終わる操作を実装するオブジェクトを作成します。
+     * @param canvasElem マウスイベントを検出する要素です。
+     * @param funcBeginStroke ストローク開始時に呼び出す関数です。この関数はストローク中やストローク終了時に呼び出すメソッドを含むオブジェクトを返す必要があります。
+     * @return 操作を中止するためのインタフェースを返します。
+     */
+    function createOneStrokeMouseOperationImpl(mousedownElem, canvasElem, funcBeginStroke)
+    {
+        function beginStroke(ev) {
+            /*
+             * currは次のメソッドを含みます。
+             * - onMouseMove
+             * - onEndStroke
+             * - onCancelStroke
+             */
+            var curr = funcBeginStroke(ev);
+            
+            function startToListen(){
+                if(curr.onMouseMove){
+                    canvasElem.addEventListener("mousemove", curr.onMouseMove, true);
+                }
+                canvasElem.addEventListener("mouseup", endStroke, true);
+            }
+            function stopToListen(){
+                if(curr.onMouseMove){
+                    canvasElem.removeEventListener("mousemove", curr.onMouseMove, true);
+                }
+                canvasElem.removeEventListener("mouseup", endStroke, true);
+            }
+            function endStroke(ev){
+                stopToListen();
+                currStroke = null;
+                if(curr.onEndStroke){
+                    curr.onEndStroke();
+                }
+            }
+            function cancelStroke(){
+                stopToListen();
+                currStroke = null;
+                if(curr.onCancelStroke){
+                    curr.onCancelStroke();
+                }
+            }
+            startToListen();
+            return { cancel: cancelStroke };
+        }
+        var currStroke = null;
+        function onMouseDown(ev){
+            if(!currStroke){
+                currStroke = beginStroke(ev);
+            }
+        }
+        function cancelStroke(){
+            if(currStroke){
+                currStroke.cancel();
+            }
+        }
+        
+        mousedownElem.addEventListener("mousedown", onMouseDown, false);
+        function close(){
+            mousedownElem.removeEventListener("mousedown", onMouseDown, false);
+            cancelStroke();
+        }
+        return {
+            close: close,
+            cancelStroke: cancelStroke
+        };
+    }
+    
+    function createWindowDraggingOperationImpl(parent, windowDiv, captionDiv) {
+        function beginWindowMove(ev){
+            var windowPos0 = Util.getElementAbsPos(windowDiv);
+            var pos0 = Util.getMousePosOnElement(parent, ev);
+            var pos1 = pos0;
+            return {
+                onMouseMove: function(ev){
+                    pos1 = Util.getMousePosOnElement(parent, ev);
+                    var windowPos1 = [
+                        windowPos0[0]+(pos1[0]-pos0[0]),
+                        windowPos0[1]+(pos1[1]-pos0[1])
+                    ];
+                    windowDiv.style.left = windowPos1[0] + "px";
+                    windowDiv.style.top = windowPos1[1] + "px";
+                }
+            };
+        }
+        return createOneStrokeMouseOperationImpl(captionDiv, parent, beginWindowMove);
+    }
+    
     function toElapsedTimeString(t)
     {
         var days = Math.floor(t / (24*60*60));
@@ -822,7 +926,7 @@
         cv.addEventListener("mousewheel", zoomByMouseWheel, false); //chrome
 
         // scroll by mouse dragging
-        function beginMouseDragScroll(e){
+        this.beginMouseDragScroll = function(e){
             function moveMouseDragScroll(e){
                 pos1 = Util.getMousePosOnElement(cv, e);
                 view.setCenterXY(
@@ -838,8 +942,7 @@
             var pos1 = pos0;
             cv.addEventListener("mousemove", moveMouseDragScroll, true);
             cv.addEventListener("mouseup", endMouseDragScroll, true);
-        }
-        cv.addEventListener("mousedown", beginMouseDragScroll, false);
+        };
     };
     View.prototype = {
         getSpace: function() { return this.space;},
@@ -994,7 +1097,27 @@
             ctx.fillText(barLenText,
                          0.25*cv.width + 0.5*(0.25*cv.width-ctx.measureText(barLenText).width),
                          cv.height-8-2);
-        }
+        },
+
+        getObjectAtPointOnCanvas: function(pos){
+            var cv = this.getCanvas();
+            var x =  (pos[0] - 0.5*cv.width)/this.getScale() + this.getCenterX();
+            var y = -(pos[1] - 0.5*cv.height)/this.getScale() + this.getCenterY();
+            var r = 3/this.getScale();
+            var space = this.getSpace();
+            if(space){
+                var nearestObj = null;
+                var nearestObjDist = 0;
+                space.findObjectOnCircle(Vector.newXY(x, y), r, function(obj, dist){
+                    if(!nearestObj || dist < nearestObjDist){
+                        nearestObj = obj;
+                        nearestObjDist = dist;
+                    }
+                });
+                return nearestObj;
+            }
+            return null;
+        },
     };
 
 
@@ -1036,8 +1159,321 @@
         }
     }
 
+    /**
+     * class ViewMode
+     */
+    function ViewMode(space, conductor, view){
+        this.view = view;
+        var cv = view.getCanvas();
+
+        // manage tracking state.
+        var tracker = null;
+        function setTrackingTarget(obj){
+            view.invalidateAndClear();
+            if(tracker){
+                tracker.cancel();
+                tracker = null;
+            }
+            if(obj){
+                tracker = new ObjectTracker(space, obj, view);
+            }
+        }
+        
+        function onMouseDown(e){
+            var pos0 = Util.getMousePosOnElement(cv, e);
+            var obj = view.getObjectAtPointOnCanvas(pos0);
+            if(obj){
+                // select tracking target by clicking
+                setTrackingTarget(obj);
+            }
+            else{
+                view.beginMouseDragScroll(e);
+            }
+        }
+        cv.addEventListener("mousedown", onMouseDown, false);
+
+        this.close = function(){
+            cv.removeEventListener("mousedown", onMouseDown, false);
+            setTrackingTarget(null); //release object tracker.
+        };
+    }
+    ViewMode.title = "View/Tracking Mode";
+
+    /**
+     * class EditMode
+     */
+    function EditMode(space, conductor, view){
+        this.view = view;
+        var cv = view.getCanvas();
+
+        var propWindows = [];
+        
+        function onMouseDown(e){
+            var pos0 = Util.getMousePosOnElement(cv, e);
+
+            var obj = view.getObjectAtPointOnCanvas(pos0);
+            if(obj){
+                openObjectPropertyWindow(obj, space);
+                
+                // start dragging object
+                var oldObjX = Vector.getX(obj.position);
+                var oldObjY = Vector.getY(obj.position);
+
+                function onMouseMove(e){
+                    var pos1 = Util.getMousePosOnElement(cv, e);
+                    var newObjX = oldObjX +  (pos1[0] - pos0[0])/view.getScale();
+                    var newObjY = oldObjY + -(pos1[1] - pos0[1])/view.getScale();
+                    Vector.setXY(obj.position, newObjX, newObjY);
+                    space.dispatchObjectChangedEvent();
+                    view.invalidateAndClear();
+                }
+            
+                function onMouseUp(e){
+                    cv.removeEventListener("mousemove", onMouseMove, false);
+                    cv.removeEventListener("mouseup", onMouseUp, true);
+                }
+                cv.addEventListener("mousemove", onMouseMove, false);
+                cv.addEventListener("mouseup", onMouseUp, true);
+            }
+            else{
+                view.beginMouseDragScroll(e);
+            }
+        }
+        cv.addEventListener("mousedown", onMouseDown, true);
+
+        this.close = function(){
+            cv.removeEventListener("mousedown", onMouseDown, true);
+            closeObjectPropertyWindowAll(space);
+        };
+    }
+    EditMode.title = "Editing Mode";
+
+    /**
+     * class ObjectPropertyWindow
+     */
+    function ObjectPropertyWindow(){
+        var captionDiv;
+        var textboxMass;
+        var textboxRadius;
+        var textboxPositionX;
+        var textboxPositionY;
+        var textboxVelocityX;
+        var textboxVelocityY;
+        var textboxDirection;
+        var textboxSpeed;
+        var buttonApply;
+        var buttonClose;
+        var windowDiv = HTML.div({className: "window"}, [
+            captionDiv = HTML.div({className: "window-caption"}, [
+                HTML.text("Object Properties")
+            ]),
+            HTML.div(null, [
+                HTML.text("Mass:"),
+                textboxMass = HTML.textbox(),
+                HTML.text("kg")
+            ]),
+            HTML.div(null, [
+                HTML.text("Radius:"),
+                textboxRadius = HTML.textbox(),
+                HTML.text("m")
+            ]),
+            HTML.div(null, [
+                HTML.text("Position:"),
+                textboxPositionX = HTML.textbox(),
+                HTML.text("m, "),
+                textboxPositionY = HTML.textbox(),
+                HTML.text("m")
+            ]),
+            HTML.div(null, [
+                HTML.text("Velocity:"),
+                textboxVelocityX = HTML.textbox(),
+                HTML.text("m/s, "),
+                textboxVelocityY = HTML.textbox(),
+                HTML.text("m/s")
+            ]),
+            HTML.div(null, [
+                HTML.text("Direction:"),
+                textboxDirection = HTML.textbox(),
+                HTML.text("deg")
+            ]),
+            HTML.div(null, [
+                HTML.text("Speed:"),
+                textboxSpeed = HTML.textbox(),
+                HTML.text("m/s")
+            ]),
+            HTML.div(null, [
+                buttonApply = HTML.button("Apply"),
+                buttonClose = HTML.button("Close"),
+            ]),
+        ]);
+
+        var controls = [
+            {elem:textboxMass, gettor:function(o){return o.mass;}, settor:function(o, v){o.mass = v;}},
+            {elem:textboxRadius, gettor:function(o){return o.radius;}, settor:function(o, v){o.radius = v;}},
+            {elem:textboxPositionX, gettor:function(o){return Vector.getX(o.position);}, settor:function(o, v){Vector.setX(o.position, v);}},
+            {elem:textboxPositionY, gettor:function(o){return Vector.getY(o.position);}, settor:function(o, v){Vector.setY(o.position, v);}},
+            {elem:textboxVelocityX, gettor:function(o){return Vector.getX(o.velocity);}, settor:function(o, v){Vector.setX(o.velocity, v);}},
+            {elem:textboxVelocityY, gettor:function(o){return Vector.getY(o.velocity);}, settor:function(o, v){Vector.setY(o.velocity, v);}},
+            {elem:textboxDirection, gettor:function(o){return Math.atan2(Vector.getY(o.velocity), Vector.getX(o.velocity))/Math.PI*180;}, settor:function(o, v){v = v/180*Math.PI; Vector.mul(Vector.length(o.velocity), Vector.newXY(Math.cos(v), Math.sin(v)),  o.velocity);}},
+            {elem:textboxSpeed, gettor:function(o){return Vector.length(o.velocity);}, settor:function(o, v){var speed = Vector.length(o.velocity); if(speed > 0){Vector.mul(v/speed, o.velocity, o.velocity);}}},
+        ];
+        function updateControls(){
+            if(!targetObject){
+                return;
+            }
+            for(var i = 0; i < controls.length; ++i){
+                if(!controls[i].changed && i != currentFocusControlIndex){
+                    var value = controls[i].gettor(targetObject);
+                    if(isFinite(value)){
+                        controls[i].elem.value = Math.abs(value) < 100000 ? value.toString() : value.toExponential();
+                    }
+                }
+            }
+        }
+        function applyChanges(){
+            if(!targetObject){
+                return;
+            }
+            if(hasPropertyChanged){
+                for(var i = 0; i < controls.length; ++i){
+                    if(controls[i].changed){
+                        var value = parseFloat(controls[i].elem.value);
+                        if(isFinite(value)){
+                            controls[i].settor(targetObject, value);
+                        }
+                    }
+                }
+                if(targetSpace){
+                    targetSpace.dispatchObjectChangedEvent();
+                }
+                clearPropertyChangedAll();
+            }
+            updateControls();
+        }
+        function updateApplyButtonEnabled(){
+            buttonApply.disabled = !hasPropertyChanged;
+        }
+        
+        // プロパティ変更記録。
+        var hasPropertyChanged = false;
+        function setPropertyChanged(index){
+            hasPropertyChanged = true;
+            controls[index].changed = true;
+            updateApplyButtonEnabled();
+        }
+        function clearPropertyChangedAll(){
+            hasPropertyChanged = false;
+            for(var i = 0; i < controls.length; ++i){
+                controls[i].changed = false;
+            }
+            updateApplyButtonEnabled();
+        }
+
+        // フォーカスが当たったら更新を禁止する。
+        // フォーカスが外れたときに値が変わっていれば、「適用」するまで更新を禁止する。
+        var currentFocusControlIndex = -1;
+        var currentFocusControlValue = 0;
+        function changeCurrentFocus(newIndex){
+            if(currentFocusControlIndex >= 0){
+                var newValue = parseFloat(controls[currentFocusControlIndex].elem.value);
+                if(isFinite(newValue) && newValue != currentFocusControlValue){
+                    setPropertyChanged(currentFocusControlIndex);
+                }
+            }
+            currentFocusControlIndex = newIndex;
+            if(currentFocusControlIndex >= 0){
+                currentFocusControlValue = targetObject ? controls[currentFocusControlIndex].gettor(targetObject) : 0;
+            }
+        }
+        function observeControlChange(index){
+            controls[index].elem.addEventListener("focus", function(e){
+                changeCurrentFocus(index);
+            }, false);
+            controls[index].elem.addEventListener("blur", function(e){
+                changeCurrentFocus(-1);
+            }, false);
+        }
+        for(var i = 0; i < controls.length; ++i){
+            observeControlChange(i);
+        }
+
+        // 空間と対象オブジェクト
+        var targetObject = null;
+        var targetSpace = null;
+        function setSpace(space){
+            if(targetSpace){
+                targetSpace.removeEventListener("objectchanged", updateControls);
+            }
+            targetSpace = space;
+            if(targetSpace){
+                targetSpace.addEventListener("objectchanged", updateControls);
+            }
+        }
+        function setObject(obj){
+            if(targetObject){
+                return;
+            }
+            targetObject = obj;
+            clearPropertyChangedAll();
+            updateControls();
+        }
+
+        // 閉じる
+        function close(){
+            setSpace(null);
+            
+            if(targetObject){
+                var obj = targetObject;
+                targetObject = null;
+                closeObjectPropertyWindow(obj);
+            }
+
+            var parent = windowDiv.parentNode;
+            if(parent){
+                parent.removeChild(windowDiv);
+            }
+        }
+        
+        // public methods.
+        
+        this.getElement = function() { return windowDiv;};
+        this.setSpace = setSpace;
+        this.setObject = setObject;
+        this.close = close;
+        
+        buttonClose.addEventListener("click", close, false);
+        buttonApply.addEventListener("click", applyChanges, false);
+        
+        // ドラッグで移動できるようにする。
+        var windowMove = createWindowDraggingOperationImpl(parent, windowDiv, captionDiv);
+    }
+    function openObjectPropertyWindow(obj, space){
+        if(obj._propertyWindow){
+            return; //already opened.
+        }
+        var propWin = new ObjectPropertyWindow();
+        propWin.setSpace(space);
+        propWin.setObject(obj);
+        document.body.appendChild(propWin.getElement());
+        obj._propertyWindow = propWin;
+    }
+    function closeObjectPropertyWindow(obj){
+        if(obj){
+            var w = obj._propertyWindow;
+            if(w){
+                delete obj._propertyWindow;
+                w.close();
+            }
+        }
+    }
+    function closeObjectPropertyWindowAll(space){
+        for(var i = 0; i < space.objects.length; ++i){
+            closeObjectPropertyWindow(space.objects[i]);
+        }
     }
     
+    
+    var MODES = [ViewMode, EditMode];
     
 
     function main() {
@@ -1049,12 +1485,25 @@
         var cv = view.getCanvas();
         document.body.appendChild(cv);
 
+        // mode.
+        var currentMode = null;
+        function changeMode(modeIndex){
+            if(currentMode){
+                currentMode.close();
+                currentMode = null;
+            }
+            if(modeIndex >= 0 && modeIndex < MODES.length){
+                currentMode = new (MODES[modeIndex])(view.getSpace(), conductor, view);
+            }
+        }
+        
         // create a control.
         var initStateSelect;
         var initButton;
         var startButton;
         var visibleAxisCheckbox;
         var enabledBlurCheckbox;
+        var modeSelect;
         var timesliceTextbox;
         var epsilonTextbox;
         var thetaTextbox;
@@ -1066,6 +1515,7 @@
             HTML.text("Axis"),
             enabledBlurCheckbox = HTML.checkbox(view.getEnabledBlur()),
             HTML.text("Blur"),
+            modeSelect = HTML.select(MODES.map(function(item){return HTML.text(item.title);})),
             HTML.br(),
             HTML.text("time slice:"),
             timesliceTextbox = HTML.textbox(""),
@@ -1093,6 +1543,9 @@
         enabledBlurCheckbox.addEventListener("change", function(e){
             view.setEnabledBlur(!view.getEnabledBlur());
         }, false);
+        modeSelect.addEventListener("change", function(e){
+            changeMode(e.target.selectedIndex);
+        }, false);
         timesliceTextbox.addEventListener("change", function(e){
             conductor.setTimeSlice(parseFloat(e.target.value));
         }, false);
@@ -1110,6 +1563,8 @@
         }
 
         function initSpace(state){
+            changeMode(-1);// close current mode.
+            
             var space = state.factory();
             conductor.setSpace(space);
             conductor.setTimeSlice(state.dt || DEFAULT_DT);
@@ -1120,6 +1575,8 @@
                 state.viewX || DEFAULT_VIEW_X,
                 state.viewY || DEFAULT_VIEW_Y);
             updateTextbox();
+
+            changeMode(0);
         }
 
         initSpace(presetInitialStates[0]);
