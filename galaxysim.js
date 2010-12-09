@@ -537,26 +537,9 @@
         }
     }
 
-    function InitialState(title, factory, dt, viewScale, viewX, viewY){
-        this.title = title;
-        this.factory = factory;
-        this.dt = dt || DEFAULT_DT;
-        this.viewScale = viewScale || (CANVAS_WIDTH/2/2.0e11);
-        this.viewX = viewX || 0;
-        this.viewY = viewY || 0;
-    }
-
     function enumInitialStateTitlesAsHTMLText(states){
         return states.map(function(s) { return HTML.text(s.title);});
     }
-/*
-        view.setScale((cv.width/2)/
-//            2.0e12
-//            1.0e12
-            2.0e11
-//            3.0e10
-                     );
-*/
     
     var presetInitialStates = [
         // Title, SpaceFactory, ViewScale, ViewX, ViewY
