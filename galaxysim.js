@@ -795,8 +795,6 @@
         this.visibleAxis = false;
         this.enabledBlur = true;
 
-        this.trackingTarget = null;
-
         // create a canvas
         var cv = document.createElement("canvas");
         cv.setAttribute("width", CANVAS_WIDTH);
@@ -842,44 +840,6 @@
             cv.addEventListener("mouseup", endMouseDragScroll, true);
         }
         cv.addEventListener("mousedown", beginMouseDragScroll, false);
-
-        // select tracking target by clicking
-        cv.addEventListener("mousedown", function(e){
-            cv.removeEventListener("mouseup", endMouseDown, true);
-            var pos0 = Util.getMousePosOnElement(cv, e);
-            function endMouseDown(e){
-                var pos1 = Util.getMousePosOnElement(cv, e);
-                if(Math.abs(pos1[0]-pos0[0]) < 2 && Math.abs(pos1[1]-pos0[1]) < 2){
-                    var x =  (pos1[0] - 0.5*view.getCanvas().width)/view.getScale() + view.getCenterX();
-                    var y = -(pos1[1] - 0.5*view.getCanvas().height)/view.getScale() + view.getCenterY();
-                    var r = 3/view.getScale();
-                    var space = view.getSpace();
-                    if(space){
-                        var selectedObj = null;
-                        var selectedObjDist = 0;
-                        space.findObjectOnCircle(Vector.newXY(x, y), r, function(obj, dist){
-                            if(!selectedObj || dist < selectedObjDist){
-                                selectedObj = obj;
-                                selectedObjDist = dist;
-                            }
-                        });
-                        if(selectedObj){
-                            view.setTrackingTarget(selectedObj);
-                        }
-                        else{
-                            view.setTrackingTarget(null);
-                        }
-                    }
-                }
-            }
-            cv.addEventListener("mouseup", endMouseDown, true);
-            
-        }, false);
-
-
-        this.onMergedTrackingTargetStatic = function(e){
-            view.onMergedTrackingTarget(e);
-        };
     };
     View.prototype = {
         getSpace: function() { return this.space;},
@@ -890,7 +850,6 @@
         getEnabledBlur: function() { return this.enabledBlur;},
         
         setSpace: function(space){
-            this.setTrackingTarget(null);
             this.space = space;
             this.invalidateAndClear();
         },
@@ -907,6 +866,11 @@
             this.centerY = y;
             this.invalidateAndClear();
         },
+        setCenterXYWithoutClear: function(x, y){
+            this.centerX = x;
+            this.centerY = y;
+            this.invalidate();
+        },
         setVisibleAxis: function(b){
             this.visibleAxis = b;
             this.invalidateAndClear();
@@ -914,24 +878,6 @@
         setEnabledBlur: function(b){
             this.enabledBlur = b;
             this.invalidateAndClear();
-        },
-        setTrackingTarget: function(obj){
-            this.setTrackingTargetInternal(obj);
-            this.invalidateAndClear();
-        },
-        setTrackingTargetInternal: function(obj){
-            var view = this;
-            if(this.trackingTarget){
-                this.trackingTarget.removeEventListener("merged", view.onMergedTrackingTargetStatic);
-            }
-            this.trackingTarget = obj;
-            if(this.trackingTarget){
-                this.trackingTarget.addEventListener("merged", view.onMergedTrackingTargetStatic);
-            }
-        },
-        onMergedTrackingTarget: function(e){
-            //change tracking target to collided object.
-            this.setTrackingTargetInternal(e.mergeTarget);
         },
         
         
@@ -950,11 +896,6 @@
             if(this.clearRequested){
                 this.clearRequested = false;
                 this.clearCanvas();
-            }
-
-            if(this.trackingTarget){
-                this.centerX = Vector.getX(this.trackingTarget.position);
-                this.centerY = Vector.getY(this.trackingTarget.position);
             }
 
             this.clearCanvas(this.enabledBlur ? 0.01 : 1);
@@ -1057,6 +998,44 @@
     };
 
 
+    /**
+     * class ObjectTracker
+     */
+    function ObjectTracker(space, obj, view){
+        // observe collision.
+        var trackingTarget = null;
+        function onMerged(e){
+            changeTrackingTarget(e.mergeTarget);
+        }
+        function changeTrackingTarget(newTarget){
+            if(trackingTarget){
+                trackingTarget.removeEventListener("merged", onMerged);
+            }
+            trackingTarget = newTarget;
+            if(trackingTarget){
+                trackingTarget.addEventListener("merged", onMerged);
+            }
+        }
+        changeTrackingTarget(obj);
+
+        // scroll view at each step.
+        function trackTarget(){
+            view.setCenterXYWithoutClear(
+                Vector.getX(trackingTarget.position),
+                Vector.getY(trackingTarget.position));
+        }
+        space.addEventListener("step", trackTarget);
+
+        // scroll.
+        trackTarget();
+
+        // public methods.
+        this.cancel = function(){
+            changeTrackingTarget(null);
+            space.removeEventListener("step", trackTarget);
+        }
+    }
+
     }
     
     
@@ -1134,7 +1113,6 @@
             var space = state.factory();
             conductor.setSpace(space);
             conductor.setTimeSlice(state.dt || DEFAULT_DT);
-            view.setTrackingTarget(null);
             view.setSpace(space);
             view.setScale(
                 (state.scale !== undefined) ? 0.5*Math.min(cv.width, cv.height)*state.scale : DEFAULT_VIEW_SCALE);
