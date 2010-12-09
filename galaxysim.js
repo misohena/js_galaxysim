@@ -18,6 +18,26 @@
     var DEFAULT_VIEW_Y = 0;
 
 
+    //
+    // Utilities
+    //
+    function toElapsedTimeString(t)
+    {
+        var days = Math.floor(t / (24*60*60));
+        t -= days*(24*60*60);
+        var hour = Math.floor(t / (60*60));
+        t -= hour*(60*60);
+        var min = Math.floor(t / 60);
+        t -= min*60;
+        var sec = Math.floor(t);
+
+        return days+"days "+
+            ("0"+hour).slice(-2)+"h"+
+            ("0"+min).slice(-2)+"m"+
+            ("0"+sec).slice(-2)+"s";
+    }
+
+
 
     /**
      * Vector Math Utilities
@@ -1036,20 +1056,7 @@
         }
     };
 
-    function toElapsedTimeString(t)
-    {
-        var days = Math.floor(t / (24*60*60));
-        t -= days*(24*60*60);
-        var hour = Math.floor(t / (60*60));
-        t -= hour*(60*60);
-        var min = Math.floor(t / 60);
-        t -= min*60;
-        var sec = Math.floor(t);
 
-        return days+"days "+
-            ("0"+hour).slice(-2)+"h"+
-            ("0"+min).slice(-2)+"m"+
-            ("0"+sec).slice(-2)+"s";
     }
     
     
