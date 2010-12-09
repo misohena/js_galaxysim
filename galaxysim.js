@@ -112,6 +112,57 @@
         getY: function(v) { return v[1];}
     };
 
+    /**
+     * class EventDispatcher
+     */
+    var EventDispatcher = function(){
+        this.types = {};
+    };
+    EventDispatcher.prototype = {
+        addEventListener: function(type, listener){
+            var list = this.types[type] || (this.types[type] = []);
+            if(list.indexOf(listener) == -1){
+                list.push(listener);
+            }
+        },
+        removeEventListener: function(type, listener){
+            var list = this.types[type];
+            if(list){
+                var index = list.indexOf(listener);
+                if(index != -1){
+                    list.splice(index, 1);
+                }
+            }
+        },
+        dispatchEvent: function(e){
+            var list = this.types[e.type];
+            if(list){
+                for(var i = 0; i < list.length; ++i){
+                    list[i](e);
+                }
+            }
+        }
+    };
+    EventDispatcher.internal = {
+        getEventDispatcher: function(){
+            return this.eventDispatcherInstance_ ||
+                (this.eventDispatcherInstance_=new EventDispatcher());
+        },
+        addEventListener: function(type, listener){
+            this.getEventDispatcher().addEventListener(type, listener);
+        },
+        removeEventListener: function(type, listener){
+            this.getEventDispatcher().removeEventListener(type, listener);
+        },
+        dispatchEvent: function(e){
+            this.getEventDispatcher().dispatchEvent(e);
+        }
+    };
+    EventDispatcher.addMethodTo = function(obj){ ///@todo もっと簡潔な方法があるはず。
+        for(var key in EventDispatcher.internal){
+            obj[key] = EventDispatcher.internal[key];
+        }
+    };
 
 
     /**
@@ -125,7 +176,6 @@
         this.acceleration = Vector.newZero();
         this.phi = 0;
         this.next = null; // for linked list.
-        this.eventListeners = {};
     };
     SpaceObject.prototype = {
         destroy: function(){
@@ -204,6 +254,7 @@
             }
         }
     };
+    EventDispatcher.addMethodTo(SpaceObject.prototype);
 
     
     /**
