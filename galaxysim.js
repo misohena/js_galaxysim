@@ -1116,6 +1116,7 @@
             updateTextbox();
 
             changeMode(0);
+            modeSelect.selectedIndex = 0;
         }
 
         initSpace(presetInitialStates[0]);
