@@ -1,3 +1,4 @@
+// -*- coding: utf-8 -*-
 // -----------------------------------------------------------------------
 // JavaScript Extensions
 // https://developer.mozilla.org/ja/New_in_JavaScript_1.6
@@ -86,7 +87,7 @@
             var thisp = arguments[1];
             for (var i = 0; i < len; i++){
                 if (i in this){
-                    var val = this[i]; // fun ‚ª this ‚ð •Ï‰»‚³‚¹‚½ê‡‚É”õ‚¦‚Ä
+                    var val = this[i]; // fun ãŒ this ã‚’ å¤‰åŒ–ã•ã›ãŸå ´åˆã«å‚™ãˆã¦
                     if (fun.call(thisp, val, i, this))
                         res.push(val);
                 }
@@ -157,7 +158,7 @@
             if (typeof fun != "function")
                 throw new TypeError();
 
-            // ‰Šú’l‚ª‚È‚¢ê‡‚Æ‹ó”z—ñ‚Ìê‡‚Í’l‚ð•Ô‚³‚È‚¢
+            // åˆæœŸå€¤ãŒãªã„å ´åˆã¨ç©ºé…åˆ—ã®å ´åˆã¯å€¤ã‚’è¿”ã•ãªã„
             if (len == 0 && arguments.length == 1)
                 throw new TypeError();
 
@@ -172,7 +173,7 @@
                         break;
                     }
 
-                    // ”z—ñ‚ª’l‚ðŠÜ‚Ü‚È‚¢ê‡A‰Šú’l‚ð•Ô‚³‚È‚¢
+                    // é…åˆ—ãŒå€¤ã‚’å«ã¾ãªã„å ´åˆã€åˆæœŸå€¤ã‚’è¿”ã•ãªã„
                     if (++i >= len)
                         throw new TypeError();
                 } while (true);

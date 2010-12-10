@@ -1,3 +1,4 @@
+// -*- coding: utf-8 -*-
 (function(){
     function getGlobalObject(){
         return this;
