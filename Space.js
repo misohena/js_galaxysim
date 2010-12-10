@@ -66,7 +66,7 @@
         }
     };
 
-
+    var spaceObjectIdCounter = 1;
     /**
      * class SpaceObject
      */
@@ -78,8 +78,12 @@
         this.acceleration = Vector.newZero();
         this.phi = 0;
         this.next = null; // for linked list.
+        this.id = spaceObjectIdCounter++; //unique number
     };
     SpaceObject.prototype = {
+        getId: function(){
+            return this.id;
+        },
         destroy: function(){
             this.mass = 0;
             this.radius = 0;

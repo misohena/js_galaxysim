@@ -5,7 +5,7 @@
     /**
      * Vector Math Utilities (2D & Array)
      */
-    var Vector = thispkg.Vector = {
+    var Vector = thispkg.Vector2DArray = thispkg.Vector = {
         newZero: function(){ return [0, 0];},
         newOnX: function(x){ return [x, 0];},
         newOnY: function(y){ return [0, y];},

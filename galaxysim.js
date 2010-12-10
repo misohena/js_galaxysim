@@ -4,8 +4,6 @@
 // require Vector.js
 // require Space.js
 
-// TODO: 追跡モードが解除できないのを何とかする。
-// TODO: openObjectPropertyWindowで位置を少しずつずらす。
 // TODO: EditModeで選択中の物体を円で囲み、速度ベクトルを表示する。それを使って速度ベクトルを変更できるようにする。
 // TODO: EditMode時にEditModeWindowを表示する。物体の追加や状態の保存・復元ができる。
 // TODO: 新しい物体を追加できるようにする。
@@ -15,6 +13,7 @@
 // TODO: jsonテキストから状態を復元できるようにする。
 // TODO: 現在の状態をクッキーに出力できるようにする。
 // TODO: View下のコントロールを枠で囲む。
+// TODO: 衝突判定の有無を切り替えられるようにする。
 // TODO: jsファイルを分割する。シミュレーションのコア部分をspace.jsへ。プリセット状態はpresets.jsへ。
 // TODO: index.htmlを書く。
 // TODO: 公開する。
@@ -26,6 +25,7 @@
     var HTML = thispkg.HTML;
     var Util = thispkg.Util;
     var Vector = thispkg.Vector;
+    var Vector2DArray = thispkg.Vector2DArray;
     var Space = thispkg.Space;
     var SpaceObject = thispkg.SpaceObject;
 
@@ -38,99 +38,13 @@
     var DEFAULT_VIEW_X = 0;
     var DEFAULT_VIEW_Y = 0;
 
+    var DRAGGING_START_LENGTH = 3;
+    var PICKING_RADIUS = 3;
 
     //
     // Utilities
     //
-    /**
-     * マウス一筆書きで終わる操作を実装するオブジェクトを作成します。
-     * @param canvasElem マウスイベントを検出する要素です。
-     * @param funcBeginStroke ストローク開始時に呼び出す関数です。この関数はストローク中やストローク終了時に呼び出すメソッドを含むオブジェクトを返す必要があります。
-     * @return 操作を中止するためのインタフェースを返します。
-     */
-    function createOneStrokeMouseOperationImpl(mousedownElem, canvasElem, funcBeginStroke)
-    {
-        function beginStroke(ev) {
-            /*
-             * currは次のメソッドを含みます。
-             * - onMouseMove
-             * - onEndStroke
-             * - onCancelStroke
-             */
-            var curr = funcBeginStroke(ev);
-            
-            function startToListen(){
-                if(curr.onMouseMove){
-                    canvasElem.addEventListener("mousemove", curr.onMouseMove, true);
-                }
-                canvasElem.addEventListener("mouseup", endStroke, true);
-            }
-            function stopToListen(){
-                if(curr.onMouseMove){
-                    canvasElem.removeEventListener("mousemove", curr.onMouseMove, true);
-                }
-                canvasElem.removeEventListener("mouseup", endStroke, true);
-            }
-            function endStroke(ev){
-                stopToListen();
-                currStroke = null;
-                if(curr.onEndStroke){
-                    curr.onEndStroke();
-                }
-            }
-            function cancelStroke(){
-                stopToListen();
-                currStroke = null;
-                if(curr.onCancelStroke){
-                    curr.onCancelStroke();
-                }
-            }
-            startToListen();
-            return { cancel: cancelStroke };
-        }
-        var currStroke = null;
-        function onMouseDown(ev){
-            if(!currStroke){
-                currStroke = beginStroke(ev);
-            }
-        }
-        function cancelStroke(){
-            if(currStroke){
-                currStroke.cancel();
-            }
-        }
-        
-        mousedownElem.addEventListener("mousedown", onMouseDown, false);
-        function close(){
-            mousedownElem.removeEventListener("mousedown", onMouseDown, false);
-            cancelStroke();
-        }
-        return {
-            close: close,
-            cancelStroke: cancelStroke
-        };
-    }
-    
-    function createWindowDraggingOperationImpl(parent, windowDiv, captionDiv) {
-        function beginWindowMove(ev){
-            var windowPos0 = Util.getElementAbsPos(windowDiv);
-            var pos0 = Util.getMousePosOnElement(parent, ev);
-            var pos1 = pos0;
-            return {
-                onMouseMove: function(ev){
-                    pos1 = Util.getMousePosOnElement(parent, ev);
-                    var windowPos1 = [
-                        windowPos0[0]+(pos1[0]-pos0[0]),
-                        windowPos0[1]+(pos1[1]-pos0[1])
-                    ];
-                    windowDiv.style.left = windowPos1[0] + "px";
-                    windowDiv.style.top = windowPos1[1] + "px";
-                }
-            };
-        }
-        return createOneStrokeMouseOperationImpl(captionDiv, parent, beginWindowMove);
-    }
-    
+
     function toElapsedTimeString(t)
     {
         var days = Math.floor(t / (24*60*60));
@@ -147,8 +61,173 @@
             ("0"+sec).slice(-2)+"s";
     }
 
+    /**
+     * 指定した要素上のマウスイベントハンドラを登録します。
+     * @param elem 監視対象の要素です。
+     * @param funcs マウスイベントハンドラを格納したオブジェクトです。
+     *              有効なキーは
+     *              down, move, up, dragbegin, dragmove, dragend, click, abort
+     *              です。
+     * @param elemMouseDown mousedownイベントを監視する要素です。
+     *                      省略時はelemと同じです。
+     * @return .release()を呼ぶと登録を解除するオブジェクト。
+     */
+    function setMouseHandler(elem, funcs, elemMouseDown)
+    {
+        if(!elemMouseDown){ elemMouseDown = elem;}
+        
+        var currStroke = null;
 
+        function fcall(key){
+            var f = funcs[key];
+            if(f){ f(currStroke); }
+        }
 
+        function beginStroke(e0, pos0){
+            if(currStroke){ endStroke();}
+            
+            elem.addEventListener("mousemove", onMouseMove, true);
+            elem.addEventListener("mouseup", onMouseUp, true);
+            currStroke = {
+                downEvent: e0, downPos: pos0,
+                currEvent: e0, currPos: pos0,
+                //upEvent: undefined, upPos: undefined,
+                dragging: false,
+                endStroke: endStroke
+            };
+        }
+        
+        function endStroke(){
+            if(currStroke){
+                currStroke = null;
+                elem.removeEventListener("mousemove", onMouseMove, true);
+                elem.removeEventListener("mouseup", onMouseUp, true);
+            }
+        }
+        
+        function onMouseDown(e0){
+            beginStroke(e0, Util.getMousePosOnElement(elem, e0));
+            fcall("down");
+        }
+        
+        function onMouseMove(e1){
+            if(!currStroke){
+                return;
+            }
+            currStroke.currEvent = e1;
+            currStroke.currPos = Util.getMousePosOnElement(elem, e1);
+            if(!currStroke.dragging && Vector2DArray.distance(currStroke.downPos, currStroke.currPos) > DRAGGING_START_LENGTH){
+                // dragging starts.
+                currStroke.dragging = true;
+                fcall("dragbegin");
+            }
+            fcall("move");
+            if(currStroke.dragging){
+                fcall("dragmove");
+            }
+        }
+        
+        function onMouseUp(e2){
+            if(!currStroke){
+                return;
+            }
+            currStroke.upEvent = e2;
+            currStroke.upPos = Util.getMousePosOnElement(elem, e2);
+            fcall("up");
+            if(!currStroke.dragging){
+                fcall("click");
+            }
+            else{
+                fcall("dragend");
+            }
+            endStroke();
+        }
+
+        function abortCurrentStroke(){
+            if(!currStroke){
+                return;
+            }
+            fcall("abort");
+            endStroke();
+        }
+        
+        elemMouseDown.addEventListener("mousedown", onMouseDown, false);
+
+        return {
+            abortCurrentStroke: abortCurrentStroke,
+            release: function(){
+                abortCurrentStroke();
+                elemMouseDown.removeEventListener("mousedown", onMouseDown, false);
+            }
+        };
+    }
+
+    /**
+     * ウィンドウを動かすためのマウスイベントハンドラを登録します。
+     */
+    function setMoveWindowByMouse(parent, windowDiv, captionDiv)
+    {
+        return setMouseHandler(
+            parent,
+            {
+                down: function(stroke){
+                    stroke.downWindowPos = Util.getElementAbsPos(windowDiv);
+                },
+                move: function(stroke){
+                    var currWindowPos = Vector2DArray.add(
+                        stroke.downWindowPos,
+                        Vector2DArray.sub(
+                            stroke.currPos,
+                            stroke.downPos));
+                    setWindowPosition(windowDiv,
+                                      currWindowPos[0],
+                                      currWindowPos[1]);
+                }
+            },
+            captionDiv
+        );
+    }
+
+    function setWindowPosition(windowDiv, x, y)
+    {
+        windowDiv.style.left = x + "px";
+        windowDiv.style.top  = y + "px";
+    }
+
+    function Window(attrs, children){
+        var win = this;
+        
+        var captionDiv;
+        var captionText;
+        var clientDiv;
+        var windowDiv = HTML.div(
+            Util.mergeObject({"className": "window"}, attrs),
+            [
+                captionDiv = HTML.div({className: "window-caption"}, [
+                    captionText = HTML.text("")
+                ]),
+                clientDiv = HTML.div({className: "window-client"}, children)
+            ]
+        );
+        var windowMove = setMoveWindowByMouse(window, windowDiv, captionDiv);
+        
+        win.getElement = function(){
+            return windowDiv;
+        }
+        win.setCaptionText = function(str){
+            captionText.nodeValue = str;
+        };
+        win.setPosition = function(x, y){
+            setWindowPosition(windowDiv, x, y);
+        };
+        win.removeFromParent = function(){
+            windowMove.abortCurrentStroke();
+            var parent = windowDiv.parentNode;
+            if(parent){
+                parent.removeChild(windowDiv);
+            }
+        };
+    }
 
 
 
@@ -344,7 +423,6 @@
         var cv = document.createElement("canvas");
         cv.setAttribute("width", CANVAS_WIDTH);
         cv.setAttribute("height", CANVAS_HEIGHT);
-        cv.style.cssText = "border: 1px solid; background: #000;";
         var ctx = cv.getContext("2d");
         ctx.fillRect(0, 0, cv.width, cv.height);
         this.getCanvas = function(){ return cv;};
@@ -550,7 +628,7 @@
             var cv = this.getCanvas();
             var x =  (pos[0] - 0.5*cv.width)/this.getScale() + this.getCenterX();
             var y = -(pos[1] - 0.5*cv.height)/this.getScale() + this.getCenterY();
-            var r = 3/this.getScale();
+            var r = PICKING_RADIUS/this.getScale();
             var space = this.getSpace();
             if(space){
                 var nearestObj = null;
@@ -625,22 +703,27 @@
                 tracker = new ObjectTracker(space, obj, view);
             }
         }
-        
-        function onMouseDown(e){
-            var pos0 = Util.getMousePosOnElement(cv, e);
-            var obj = view.getObjectAtPointOnCanvas(pos0);
-            if(obj){
-                // select tracking target by clicking
-                setTrackingTarget(obj);
-            }
-            else{
-                view.beginMouseDragScroll(e);
-            }
-        }
-        cv.addEventListener("mousedown", onMouseDown, false);
+
+        // add mouse event handlers.
+        var mouseHandler = setMouseHandler(
+            cv, {
+                dragbegin: function(stroke){
+                    view.beginMouseDragScroll(stroke.downEvent);
+                },
+                click: function(stroke){
+                    // select tracking target by clicking.
+                    var obj = view.getObjectAtPointOnCanvas(stroke.downPos);
+                    if(obj){
+                        setTrackingTarget(obj);
+                    }
+                    else{
+                        setTrackingTarget(null);
+                    }
+                }
+            });
 
         this.close = function(){
-            cv.removeEventListener("mousedown", onMouseDown, false);
+            mouseHandler.release();
             setTrackingTarget(null); //release object tracker.
         };
     }
@@ -653,43 +736,48 @@
         this.view = view;
         var cv = view.getCanvas();
 
-        var propWindows = [];
+        var objPropWindowY = 0;
+        var OBJ_PROP_WINDOW_START_X = CANVAS_WIDTH + 20;
+        var OBJ_PROP_WINDOW_START_Y = 100;
+        var OBJ_PROP_WINDOW_STEP_Y = 24;
+        var OBJ_PROP_WINDOW_COUNT_Y = 5;
         
-        function onMouseDown(e){
-            var pos0 = Util.getMousePosOnElement(cv, e);
-
-            var obj = view.getObjectAtPointOnCanvas(pos0);
-            if(obj){
-                openObjectPropertyWindow(obj, space);
-                
-                // start dragging object
-                var oldObjX = Vector.getX(obj.position);
-                var oldObjY = Vector.getY(obj.position);
-
-                function onMouseMove(e){
-                    var pos1 = Util.getMousePosOnElement(cv, e);
-                    var newObjX = oldObjX +  (pos1[0] - pos0[0])/view.getScale();
-                    var newObjY = oldObjY + -(pos1[1] - pos0[1])/view.getScale();
-                    Vector.setXY(obj.position, newObjX, newObjY);
-                    space.dispatchObjectChangedEvent();
-                    view.invalidateAndClear();
+        var mouseHandler = setMouseHandler(
+            cv, {
+                down: function(stroke){
+                    var obj = view.getObjectAtPointOnCanvas(stroke.downPos);
+                    stroke.downObj = obj;
+                    stroke.downObjX = obj ? Vector.getX(obj.position) : 0;
+                    stroke.downObjY = obj ? Vector.getY(obj.position) : 0;
+                    
+                    if(obj){
+                        openObjectPropertyWindow(
+                            obj, space,
+                            OBJ_PROP_WINDOW_START_X,
+                            OBJ_PROP_WINDOW_START_Y+OBJ_PROP_WINDOW_STEP_Y*objPropWindowY);
+                        if(++objPropWindowY >= OBJ_PROP_WINDOW_COUNT_Y){
+                            objPropWindowY = 0;
+                        }
+                    }
+                    else{
+                        view.beginMouseDragScroll(stroke.downEvent);
+                        stroke.endStroke();
+                    }
+                },
+                dragmove: function(stroke){
+                    var obj = stroke.downObj;
+                    if(obj){
+                        var newX = stroke.downObjX +  (stroke.currPos[0] - stroke.downPos[0])/view.getScale();
+                        var newY = stroke.downObjY + -(stroke.currPos[1] - stroke.downPos[1])/view.getScale();
+                        Vector.setXY(obj.position, newX, newY);
+                        space.dispatchObjectChangedEvent();
+                        view.invalidateAndClear();
+                    }
                 }
-            
-                function onMouseUp(e){
-                    cv.removeEventListener("mousemove", onMouseMove, false);
-                    cv.removeEventListener("mouseup", onMouseUp, true);
-                }
-                cv.addEventListener("mousemove", onMouseMove, false);
-                cv.addEventListener("mouseup", onMouseUp, true);
-            }
-            else{
-                view.beginMouseDragScroll(e);
-            }
-        }
-        cv.addEventListener("mousedown", onMouseDown, true);
+            });
 
         this.close = function(){
-            cv.removeEventListener("mousedown", onMouseDown, true);
+            mouseHandler.release();
             closeObjectPropertyWindowAll(space);
         };
     }
@@ -699,7 +787,6 @@
      * class ObjectPropertyWindow
      */
     function ObjectPropertyWindow(){
-        var captionDiv;
         var textboxMass;
         var textboxRadius;
         var textboxPositionX;
@@ -710,10 +797,7 @@
         var textboxSpeed;
         var buttonApply;
         var buttonClose;
-        var windowDiv = HTML.div({className: "window"}, [
-            captionDiv = HTML.div({className: "window-caption"}, [
-                HTML.text("Object Properties")
-            ]),
+        var win = new Window(null, [
             HTML.div(null, [
                 HTML.text("Mass:"),
                 textboxMass = HTML.textbox(),
@@ -863,6 +947,8 @@
             targetObject = obj;
             clearPropertyChangedAll();
             updateControls();
+
+            win.setCaptionText("Object #"+obj.getId());
         }
 
         // 閉じる
@@ -875,30 +961,25 @@
                 closeObjectPropertyWindow(obj);
             }
 
-            var parent = windowDiv.parentNode;
-            if(parent){
-                parent.removeChild(windowDiv);
-            }
+            win.removeFromParent();
         }
-        
+
         // public methods.
         
-        this.getElement = function() { return windowDiv;};
+        this.getElement = function() { return win.getElement();};
         this.setSpace = setSpace;
         this.setObject = setObject;
         this.close = close;
         
         buttonClose.addEventListener("click", close, false);
         buttonApply.addEventListener("click", applyChanges, false);
-        
-        // ドラッグで移動できるようにする。
-        var windowMove = createWindowDraggingOperationImpl(parent, windowDiv, captionDiv);
     }
-    function openObjectPropertyWindow(obj, space){
+    function openObjectPropertyWindow(obj, space, windowX, windowY){
         if(obj._propertyWindow){
             return; //already opened.
         }
         var propWin = new ObjectPropertyWindow();
+        setWindowPosition(propWin.getElement(), windowX, windowY);
         propWin.setSpace(space);
         propWin.setObject(obj);
         document.body.appendChild(propWin.getElement());
