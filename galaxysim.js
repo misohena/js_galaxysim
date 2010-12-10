@@ -4,7 +4,6 @@
 // require Vector.js
 // require Space.js
 
-// TODO: EditModeで選択中の物体を円で囲み、速度ベクトルを表示する。それを使って速度ベクトルを変更できるようにする。
 // TODO: EditMode時にEditModeWindowを表示する。物体の追加や状態の保存・復元ができる。
 // TODO: 新しい物体を追加できるようにする。
 // TODO: スクリプトから新しい物体を追加できるようにする。
@@ -25,6 +24,7 @@
     var HTML = thispkg.HTML;
     var Util = thispkg.Util;
     var Vector = thispkg.Vector;
+    var Vector2D = thispkg.Vector2D;
     var Vector2DArray = thispkg.Vector2DArray;
     var Space = thispkg.Space;
     var SpaceObject = thispkg.SpaceObject;
@@ -41,6 +41,13 @@
     var DRAGGING_START_LENGTH = 3;
     var PICKING_RADIUS = 3;
 
+    var VEL_LINE_LENGTH = 50; //[px]
+    var VEL_LINE_LENGTH_MIN = VEL_LINE_LENGTH/4;
+    var VEL_LINE_LENGTH_MAX = VEL_LINE_LENGTH*4;
+
+    var VEL_LINE_HEAD_ARROW_LENGTH = 8;
+    var VEL_LINE_HEAD_ARROW_WIDTH = 8;
+    
     //
     // Utilities
     //
@@ -112,7 +119,7 @@
         }
         
         function onMouseDown(e0){
-            beginStroke(e0, Util.getMousePosOnElement(elem, e0));
+            beginStroke(e0, getMousePosOnElement(elem, e0));
             fcall("down");
         }
         
@@ -121,7 +128,7 @@
                 return;
             }
             currStroke.currEvent = e1;
-            currStroke.currPos = Util.getMousePosOnElement(elem, e1);
+            currStroke.currPos = getMousePosOnElement(elem, e1);
             if(!currStroke.dragging && Vector2DArray.distance(currStroke.downPos, currStroke.currPos) > DRAGGING_START_LENGTH){
                 // dragging starts.
                 currStroke.dragging = true;
@@ -138,7 +145,7 @@
                 return;
             }
             currStroke.upEvent = e2;
-            currStroke.upPos = Util.getMousePosOnElement(elem, e2);
+            currStroke.upPos = getMousePosOnElement(elem, e2);
             fcall("up");
             if(!currStroke.dragging){
                 fcall("click");
@@ -422,6 +429,8 @@
         this.visibleAxis = false;
         this.enabledBlur = true;
 
+        this.extraPainter = null;
+        
         this.onSpaceObjectChanged = function(e){ view.invalidate();};
         
         // create a canvas
@@ -519,7 +528,11 @@
             this.enabledBlur = b;
             this.invalidateAndClear();
         },
-        
+
+        setExtraPainter: function(painter){
+            this.extraPainter = painter;
+            this.invalidateAndClear();
+        },
         
         invalidate: function(){
             if(this.timerId == null){
@@ -545,6 +558,10 @@
             this.drawObjects();
             this.drawStatus();
             this.drawScaleBar();
+
+            if(this.extraPainter){
+                this.extraPainter();
+            }
         },
         clearCanvas: function(alpha) {
             if(alpha === undefined){
@@ -595,8 +612,8 @@
                 if(o.isDestroyed()){
                     return;
                 }
-                var x = cv.width/2 + (Vector.getX(o.position) - viewX) * scale;
-                var y = cv.height/2 - (Vector.getY(o.position) - viewY) * scale;
+                var x = 0.5*cv.width + (Vector.getX(o.position) - viewX) * scale;
+                var y = 0.5*cv.height - (Vector.getY(o.position) - viewY) * scale;
                 var r = o.radius * scale;
                 if(r < 0.7){
                     r = 0.7;
@@ -654,6 +671,17 @@
                 return nearestObj;
             }
             return null;
+        },
+
+        convertSpaceToCanvas: function(spacePos){
+            var cv = this.getCanvas();
+            var scale = this.getScale();
+            var viewX = this.getCenterX();
+            var viewY = this.getCenterY();
+
+            return Vector2D.newXY(
+                0.5*cv.width  + (Vector.getX(spacePos) - viewX) * scale,
+                0.5*cv.height - (Vector.getY(spacePos) - viewY) * scale);
         },
     };
 
@@ -757,12 +785,22 @@
         var mouseHandler = setMouseHandler(
             cv, {
                 down: function(stroke){
+                    // drag head of velocity line.
+                    if(currentEditTarget && currentEditTarget.isPositionOnHeadArrow(stroke.downPos)){
+                        stroke.downVelLineEditTarget = currentEditTarget;
+                        stroke.downVelLineScale = currentEditTarget.getVelLineScale();
+                        return;
+                    }
+
+                    // drag object.
                     var obj = view.getObjectAtPointOnCanvas(stroke.downPos);
-                    stroke.downObj = obj;
-                    stroke.downObjX = obj ? Vector.getX(obj.position) : 0;
-                    stroke.downObjY = obj ? Vector.getY(obj.position) : 0;
-                    
                     if(obj){
+                        stroke.downObj = obj;
+                        stroke.downObjX = Vector.getX(obj.position);
+                        stroke.downObjY = Vector.getY(obj.position);
+                        
+                        setCurrentEditTarget(obj);
+                        
                         openObjectPropertyWindow(
                             obj, space,
                             OBJ_PROP_WINDOW_START_X,
@@ -770,25 +808,166 @@
                         if(++objPropWindowY >= OBJ_PROP_WINDOW_COUNT_Y){
                             objPropWindowY = 0;
                         }
+                        return;
                     }
-                    else{
-                        view.beginMouseDragScroll(stroke.downEvent);
-                        stroke.endStroke();
-                    }
+
+                    // scroll.
+                    view.beginMouseDragScroll(stroke.downEvent);
+                    //stroke.endStroke();
                 },
                 dragmove: function(stroke){
-                    var obj = stroke.downObj;
-                    if(obj){
+                    // drag head of velocity line.
+                    if(stroke.downVelLineEditTarget){
+                        var et = stroke.downVelLineEditTarget;
+                        var obj = et.getObject();
+                        var velLineScale = stroke.downVelLineScale;//et.getVelLineScale();
+                        var tail = et.getVelLineTail();
+
+                        var newVel2D = Vector2D.negateY(Vector2D.mul(1/velLineScale, Vector2D.sub(stroke.currPos, tail)));
+                        if(Vector2D.isFinite(newVel2D)){
+                            Vector.setXY(
+                                obj.velocity,
+                                Vector2D.getX(newVel2D),
+                                Vector2D.getY(newVel2D) );
+                            space.dispatchObjectChangedEvent();
+                            view.invalidateAndClear();
+                        }
+                    }
+                    
+                    // drag object.
+                    if(stroke.downObj){
+                        var obj = stroke.downObj;
                         var newX = stroke.downObjX +  (stroke.currPos[0] - stroke.downPos[0])/view.getScale();
                         var newY = stroke.downObjY + -(stroke.currPos[1] - stroke.downPos[1])/view.getScale();
                         Vector.setXY(obj.position, newX, newY);
                         space.dispatchObjectChangedEvent();
                         view.invalidateAndClear();
                     }
-                }
+                },
+                click: function(stroke){
+                    if(!stroke.downObj){
+                        releaseCurrentEditTarget();
+                    }
+                },
             });
 
+        // Current Edit Target
+        function EditTarget(obj){
+            var velLineScale = NaN;
+            
+            updateVelLineScale();
+            
+            function updateVelLineScaleInner(){
+                var speed = Vector.length(obj.velocity);
+                velLineScale = VEL_LINE_LENGTH/speed; // NaN,INF,-INF
+            }
+            function updateVelLineScale(){
+                if(isFinite(velLineScale)){
+                    var speed = Vector.length(obj.velocity);
+                    var velLinePixels = speed*velLineScale;
+                    if(velLinePixels > VEL_LINE_LENGTH_MAX ||
+                       velLinePixels < VEL_LINE_LENGTH_MIN){
+                        updateVelLineScaleInner();
+                    }
+                }
+                else{
+                    updateVelLineScaleInner();
+                }
+            }
+            function getVelLineScale(){
+                updateVelLineScale();
+                return velLineScale;
+            }
+            function getVelLineVec(){
+                updateVelLineScale();
+                if(isFinite(velLineScale)){
+                    return Vector2D.negateY(Vector2D.mul(velLineScale, obj.velocity));
+                }
+                else{
+                    return Vector2D.newXY(VEL_LINE_LENGTH, 0);
+                }
+            }
+            function getVelLineTail(){
+                return view.convertSpaceToCanvas(obj.position);
+            }
+            function getVelLineHead(){
+                return Vector2D.add(getVelLineTail(), getVelLineVec());
+            }
+            function isPositionOnHeadArrow(pos){
+                var posRel = Vector2D.sub(pos, getVelLineTail());
+                var vec = getVelLineVec();
+                var vecLen = Vector2D.length(vec);
+                var vecUnit = Vector2D.mul(1/vecLen, vec);
+
+                var y = Vector2D.dot(vecUnit, posRel);
+                var x = Vector2D.perpdot(vecUnit, posRel);
+                return y <= vecLen
+                    && y >= vecLen-VEL_LINE_HEAD_ARROW_LENGTH
+                    && Math.abs(x) < VEL_LINE_HEAD_ARROW_WIDTH/2;
+            }
+            return {
+                getVelLineTail: getVelLineTail,
+                getVelLineHead: getVelLineHead,
+                getVelLineScale: getVelLineScale,
+                isPositionOnHeadArrow: isPositionOnHeadArrow,
+                getObject: function() { return obj;},
+            };
+        }
+        var currentEditTarget = null;
+        function setCurrentEditTarget(obj){
+            if(!obj || obj.isDestroyed()){
+                releaseCurrentEditTarget();
+                return;
+            }
+
+            currentEditTarget = new EditTarget(obj);
+            
+            view.setExtraPainter(function drawVelocityArrow(){
+                var ctx = view.getContext2D();
+                ctx.strokeStyle = "#ff8000";
+                ctx.fillStyle = "#ff8000";
+                
+                var tail = currentEditTarget.getVelLineTail();
+                var tailX = Vector2D.getX(tail);
+                var tailY = Vector2D.getY(tail);
+                ctx.beginPath();
+                ctx.arc(tailX, tailY, 10, 0, 2*Math.PI, false);
+                ctx.stroke();
+
+                var head = currentEditTarget.getVelLineHead();
+                var headX = Vector2D.getX(head);
+                var headY = Vector2D.getY(head);
+                ctx.beginPath();
+                ctx.moveTo(tailX, tailY);
+                ctx.lineTo(headX, headY);
+                ctx.stroke();
+
+                var vx = headX - tailX;
+                var vy = headY - tailY;
+                var vlen = Math.sqrt(vx*vx+vy*vy);
+                var al = VEL_LINE_HEAD_ARROW_LENGTH;
+                var aw = VEL_LINE_HEAD_ARROW_WIDTH/2;
+                vx /= vlen;
+                vy /= vlen;
+                ctx.beginPath();
+                ctx.moveTo(headX, headY);
+                ctx.lineTo(headX-vx*al-vy*aw, headY-vy*al+vx*aw);
+                ctx.lineTo(headX-vx*al+vy*aw, headY-vy*al-vx*aw);
+                ctx.closePath();
+                ctx.fill();
+            });
+        }
+        function releaseCurrentEditTarget(){
+            if(currentEditTarget){
+                currentEditTarget = null;
+                view.setExtraPainter(null);
+            }
+        }
+
+        // public
+        
         this.close = function(){
+            releaseCurrentEditTarget();
             mouseHandler.release();
             closeObjectPropertyWindowAll(space);
         };
