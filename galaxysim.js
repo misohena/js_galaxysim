@@ -286,7 +286,6 @@
         this.timerId = null;
         this.dt = DEFAULT_DT;
         this.space = null;
-        this.view = null;
     };
     Conductor.prototype = {
         getTimeSlice: function() { return this.dt;},
@@ -294,7 +293,6 @@
         
         setTimeSlice: function(dt){ if(isFinite(dt)){this.dt = dt;}},
         setSpace: function(space){ this.space = space;},
-        setView: function(view) { this.view = view;},
         start: function(){
             if(this.space && this.timerId == null){
                 var self = this;
@@ -320,9 +318,6 @@
         onTime: function(){
             if(this.space){
                 this.space.step(this.dt);
-                if(this.view){
-                    this.view();
-                }
             }
         }
     };
@@ -343,6 +338,8 @@
         this.visibleAxis = false;
         this.enabledBlur = true;
 
+        this.onSpaceObjectChanged = function(e){ view.invalidate();};
+        
         // create a canvas
         var cv = document.createElement("canvas");
         cv.setAttribute("width", CANVAS_WIDTH);
@@ -397,7 +394,13 @@
         getEnabledBlur: function() { return this.enabledBlur;},
         
         setSpace: function(space){
+            if(this.space){
+                this.space.removeEventListener("objectchanged", this.onSpaceObjectChanged);
+            }
             this.space = space;
+            if(this.space){
+                this.space.addEventListener("objectchanged", this.onSpaceObjectChanged);
+            }
             this.invalidateAndClear();
         },
         zoom: function(s){
@@ -925,7 +928,6 @@
         
         // create a canvas.
         var view = new View();
-        conductor.setView(function(){view.invalidate();});
         var cv = view.getCanvas();
         document.body.appendChild(cv);
 
