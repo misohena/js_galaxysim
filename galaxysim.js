@@ -61,6 +61,12 @@
             ("0"+sec).slice(-2)+"s";
     }
 
+    function getMousePosOnElement(elem, ev){
+        var pos = Util.getMousePosOnElement(elem, ev);
+        // convert Array to Vector2D
+        return Vector2D.newXY(pos[0], pos[1]);
+    }
+    
     /**
      * 指定した要素上のマウスイベントハンドラを登録します。
      * @param elem 監視対象の要素です。
@@ -408,8 +414,7 @@
     var View = function()
     {
         var view = this;
-        this.centerX = DEFAULT_VIEW_X;
-        this.centerY = DEFAULT_VIEW_Y;
+        this.center = Vector2D.newXY(DEFAULT_VIEW_X, DEFAULT_VIEW_Y);
         this.scale = DEFAULT_VIEW_SCALE;
         this.timerId = null;
         this.clearRequested = false;
@@ -447,17 +452,21 @@
         // scroll by mouse dragging
         this.beginMouseDragScroll = function(e){
             function moveMouseDragScroll(e){
-                pos1 = Util.getMousePosOnElement(cv, e);
-                view.setCenterXY(
-                    viewPos0[0] - (pos1[0] - pos0[0])/view.getScale(),
-                    viewPos0[1] + (pos1[1] - pos0[1])/view.getScale() );
+                pos1 = getMousePosOnElement(cv, e);
+                view.setCenter(
+                    Vector2D.sub(
+                        viewPos0,
+                        Vector2D.negateY(
+                            Vector2D.mul(
+                                1/view.getScale(),
+                                Vector2D.sub(pos1, pos0)))));
             }
             function endMouseDragScroll(e){
                 cv.removeEventListener("mousemove", moveMouseDragScroll, true);
                 cv.removeEventListener("mouseup", endMouseDragScroll, true);
             }
-            var viewPos0 = [view.getCenterX(), view.getCenterY()];
-            var pos0 = Util.getMousePosOnElement(cv, e);
+            var viewPos0 = view.getCenter();
+            var pos0 = getMousePosOnElement(cv, e);
             var pos1 = pos0;
             cv.addEventListener("mousemove", moveMouseDragScroll, true);
             cv.addEventListener("mouseup", endMouseDragScroll, true);
@@ -466,8 +475,9 @@
     View.prototype = {
         getSpace: function() { return this.space;},
         getScale: function() { return this.scale;},
-        getCenterX: function() { return this.centerX;},
-        getCenterY: function() { return this.centerY;},
+        getCenter: function() { return Vector2D.newClone(this.center);},
+        getCenterX: function() { return Vector2D.getX(this.center);},
+        getCenterY: function() { return Vector2D.getY(this.center);},
         getVisibleAxis: function() { return this.visibleAxis;},
         getEnabledBlur: function() { return this.enabledBlur;},
         
@@ -489,14 +499,16 @@
             this.scale = s;
             this.invalidateAndClear();
         },
+        setCenter: function(p){
+            Vector2D.assign(p,  this.center);
+            this.invalidateAndClear();
+        },
         setCenterXY: function(x, y){
-            this.centerX = x;
-            this.centerY = y;
+            Vector2D.setXY(this.center, x, y);
             this.invalidateAndClear();
         },
         setCenterXYWithoutClear: function(x, y){
-            this.centerX = x;
-            this.centerY = y;
+            Vector2D.setXY(this.center, x, y);
             this.invalidate();
         },
         setVisibleAxis: function(b){
