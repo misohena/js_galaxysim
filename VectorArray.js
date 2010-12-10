@@ -5,7 +5,7 @@
     /**
      * Vector Math Utilities (2D & Array)
      */
-    var Vector = thispkg.Vector2DArray = thispkg.Vector = {
+    var Vector = thispkg.Vector2D = thispkg.Vector2DArray = thispkg.Vector = {
         newZero: function(){ return [0, 0];},
         newOnX: function(x){ return [x, 0];},
         newOnY: function(y){ return [0, y];},
@@ -76,11 +76,31 @@
         distanceLinf: function(a, b) { return Math.max(
             Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1]));},
 
+        dot: function(a, b){
+            return a[0]*b[0]+a[1]*b[1];
+        },
+        perpdot: function(a, b){
+            return a[0] * b[1] - a[1] * b[0];
+        },
+        
+        // unary operator (return a vector value)
+        
+        negateY: function(v, dst){
+            if(dst){
+                dst[0] =  v[0];
+                dst[1] = -v[1];
+            }
+            else{
+                return [v[0], -v[1]];
+            }
+        },
+        
         // unary operator (return a scalar value)
         
         lengthSq: function(v) { return v[0]*v[0] + v[1]*v[1];},
         length: function(v) { return Math.sqrt(v[0]*v[0] + v[1]*v[1]);},
         lengthLinf: function(v) { return Math.max(Math.abs(v[0]), Math.abs(v[1]));},
+        isFinite: function(v) { return isFinite(v[0]) && isFinite(v[1]);},
 
         // setter
         
