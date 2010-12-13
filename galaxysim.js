@@ -1018,7 +1018,8 @@
         var textboxSpeed;
         var buttonApply;
         var buttonClose;
-        var win = new Window(null, [
+        var win = this;
+        Window.call(this, null, [
             HTML.div(null, [
                 HTML.text("Mass:"),
                 textboxMass = HTML.textbox(),
@@ -1220,8 +1221,7 @@
         }
 
         // public methods.
-        
-        this.getElement = function() { return win.getElement();};
+
         this.setEditModeObject = setEditModeObject;
         this.setSpace = setSpace;
         this.setObject = setObject;
