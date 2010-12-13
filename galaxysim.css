@@ -1,11 +1,39 @@
 html {
   background-color: #101010;
   color: #ffffff;
+  font-size: 12px;
 }
 
 canvas {
   border: 1px solid #00b0ff;
   background-color: #000000;
+}
+
+input {
+  font-size: 12px;
+}
+
+input[type="text"] {
+   width: 12em;
+   color: #ffff00;
+   background-color: #004080;
+   border: 1px solid black;
+   padding: 1px 2px 1px 2px;
+}
+
+select {
+   background-color: #004080;
+   border: 1px solid #00b0ff;
+   padding: 0;
+   margin: 0;
+   color: #ffffff;
+}
+option {
+   background-color: #004080;
+   border: none;
+}
+option:hover {
+  background-color: #0080ff;
 }
 
 /* EditModeWindow */
