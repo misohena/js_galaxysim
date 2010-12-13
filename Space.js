@@ -39,8 +39,9 @@
         dispatchEvent: function(e){
             var list = this.types[e.type];
             if(list){
-                for(var i = 0; i < list.length; ++i){
-                    list[i](e);
+                var l = list.slice(0);
+                for(var i = 0; i < l.length; ++i){
+                    l[i](e);
                 }
             }
         }
