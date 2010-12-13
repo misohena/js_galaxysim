@@ -969,9 +969,25 @@
             }
         }
 
-        // public
+        // manage tracking state.
+        var tracker = null;
+        function setTrackingTarget(obj){
+            view.invalidateAndClear();
+            if(tracker){
+                tracker.cancel();
+                tracker = null;
+            }
+            if(obj){
+                tracker = new ObjectTracker(space, obj, view);
+            }
+        }
         
+        // public
+
+        this.setEditTarget = setCurrentEditTarget;
+        this.setTrackingTarget = setTrackingTarget;
         this.close = function(){
+            setTrackingTarget(null); //release object tracker.
             releaseCurrentEditTarget();
             mouseHandler.release();
             ObjectPropertyWindow.closeAll(space);
@@ -983,6 +999,9 @@
      * class ObjectPropertyWindow
      */
     function ObjectPropertyWindow(){
+        var buttonDelete;
+        var buttonSelect;
+        var buttonTrack;
         var textboxMass;
         var textboxRadius;
         var textboxPositionX;
@@ -1033,6 +1052,11 @@
                 buttonClose = HTML.button("Close"),
             ]),
         ]);
+        this.getCaptionElement().appendChild(HTML.div(null, [
+            buttonDelete = HTML.button("Delete"),
+            buttonSelect = HTML.button("Select"),
+            buttonTrack = HTML.button("Track")
+        ]));
 
         var controls = [
             {elem:textboxMass, gettor:function(o){return o.mass;}, settor:function(o, v){o.mass = v;}},
@@ -1152,6 +1176,30 @@
         function setEditModeObject(em){
             editMode = em;
         }
+        
+        //
+        function deleteObject(){
+            if(targetSpace && targetObject){
+                targetSpace.removeObject(targetObject);
+                close();
+            }
+        }
+        buttonDelete.addEventListener("click", deleteObject, false);
+        
+        function selectObject(){
+            if(targetSpace && targetObject && editMode){
+                editMode.setEditTarget(targetObject);
+            }
+        }
+        buttonSelect.addEventListener("click", selectObject, false);
+        
+        function trackObject(){
+            if(targetSpace && targetObject && editMode){
+                editMode.setTrackingTarget(targetObject);
+            }
+        }
+        buttonTrack.addEventListener("click", trackObject, false);
+        
         // 閉じる
         function close(){
             setSpace(null);
