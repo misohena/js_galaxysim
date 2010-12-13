@@ -39,7 +39,7 @@
     var DEFAULT_VIEW_Y = 0;
 
     var DRAGGING_START_LENGTH = 3;
-    var PICKING_RADIUS = 3;
+    var PICKING_RADIUS = 4;
 
     var VEL_LINE_LENGTH = 50; //[px]
     var VEL_LINE_LENGTH_MIN = VEL_LINE_LENGTH/4;
