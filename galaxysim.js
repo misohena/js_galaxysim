@@ -883,7 +883,7 @@
             }
             function getVelLineScale(){
                 updateVelLineScale();
-                return velLineScale;
+                return isFinite(velLineScale) ? velLineScale : 1;
             }
             function getVelLineVec(){
                 updateVelLineScale();
