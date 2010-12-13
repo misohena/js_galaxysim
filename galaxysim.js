@@ -1235,8 +1235,8 @@
             return; //already opened.
         }
         var propWin = new ObjectPropertyWindow();
-        setWindowPosition(propWin.getElement(), windowX, windowY);
         propWin.setEditModeObject(editMode);
+        propWin.setPosition(windowX, windowY);
         propWin.setSpace(space);
         propWin.setObject(obj);
         document.body.appendChild(propWin.getElement());
