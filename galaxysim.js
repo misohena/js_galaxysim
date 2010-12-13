@@ -72,6 +72,12 @@
         // convert Array to Vector2D
         return Vector2D.newXY(pos[0], pos[1]);
     }
+
+    function getElementAbsPos(elem, parent){
+        var pos = Util.getElementAbsPos(elem, parent);
+        // convert Array to Vector2D
+        return Vector2D.newXY(pos[0], pos[1]);
+    }
     
     /**
      * 指定した要素上のマウスイベントハンドラを登録します。
@@ -234,6 +240,9 @@
         };
         win.setPosition = function(x, y){
             setWindowPosition(windowDiv, x, y);
+        };
+        win.getPosition = function(){
+            return getElementAbsPos(windowDiv, window.parentNode);
         };
         win.removeFromParent = function(){
             windowMove.abortCurrentStroke();
@@ -927,6 +936,10 @@
                 return;
             }
 
+            if(currentEditTarget){
+                releaseCurrentEditTarget();
+            }
+
             currentEditTarget = new EditTarget(obj);
             
             view.setExtraPainter(function drawVelocityArrow(){
@@ -963,13 +976,29 @@
                 ctx.closePath();
                 ctx.fill();
             });
+
+            currentEditTarget.getObject().addEventListener("removefromspace", onRemoveCurrentEditTarget);
+            currentEditTarget.getObject().addEventListener("merged", onMergedCurrentEditTarget);
         }
         function releaseCurrentEditTarget(){
             if(currentEditTarget){
+                currentEditTarget.getObject().removeEventListener("removefromspace", onRemoveCurrentEditTarget);
+                currentEditTarget.getObject().removeEventListener("merged", onMergedCurrentEditTarget);
                 currentEditTarget = null;
                 view.setExtraPainter(null);
             }
         }
+        function onRemoveCurrentEditTarget(e){
+            if(currentEditTarget){
+                releaseCurrentEditTarget();
+            }
+        }
+        function onMergedCurrentEditTarget(e){
+            if(currentEditTarget){
+                setCurrentEditTarget(e.mergeTarget);
+            }
+        }
+
         // Edit Mode Menu
         var editWin = EditModeWindow.open(this);
 
@@ -991,6 +1020,8 @@
         this.openObjectPropertyWindow = openObjectPropertyWindow;
         this.setEditTarget = setCurrentEditTarget;
         this.setTrackingTarget = setTrackingTarget;
+        this.getSpace = function(){ return space;};
+        this.getView = function(){ return view;};
         this.close = function(){
             setTrackingTarget(null); //release object tracker.
             releaseCurrentEditTarget();
@@ -1169,13 +1200,30 @@
         }
         function setObject(obj){
             if(targetObject){
-                return;
+                targetObject.removeEventListener("merged", onObjectMerged);
+                targetObject.removeEventListener("removefromspace", onObjectRemove);
             }
             targetObject = obj;
-            clearPropertyChangedAll();
-            updateControls();
+            if(targetObject){
+                clearPropertyChangedAll();
+                updateControls();
 
-            win.setCaptionText("Object #"+obj.getId());
+                win.setCaptionText("Object #"+targetObject.getId());
+
+                targetObject.addEventListener("merged", onObjectMerged);
+                targetObject.addEventListener("removefromspace", onObjectRemove);
+            }
+        }
+        function onObjectMerged(e){
+            var pos = win.getPosition();
+            if(targetSpace){
+                ObjectPropertyWindow.open(e.mergeTarget, targetSpace, Vector2D.getX(pos), Vector2D.getY(pos), editMode);
+            }
+        }
+        function onObjectRemove(e){
+            if(e.target === targetObject){
+                close();
+            }
         }
 
         //
@@ -1209,13 +1257,13 @@
         
         // 閉じる
         function close(){
-            setSpace(null);
-            
             if(targetObject){
                 var obj = targetObject;
-                targetObject = null;
-                closeObjectPropertyWindow(obj);
+                setObject(null);
+                ObjectPropertyWindow.close(obj);
             }
+            setSpace(null);
+            
 
             win.removeFromParent();
         }
