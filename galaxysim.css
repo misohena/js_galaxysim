@@ -8,6 +8,10 @@ canvas {
   background-color: #000000;
 }
 
+div.window-client > div.footer {
+  text-align: right;
+}
+
 /* window */
 div.window {
    background-color: #000000;

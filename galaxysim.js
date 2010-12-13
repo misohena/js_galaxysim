@@ -1028,7 +1028,7 @@
                 textboxSpeed = HTML.textbox(),
                 HTML.text("m/s")
             ]),
-            HTML.div(null, [
+            HTML.div({className: "footer"}, [
                 buttonApply = HTML.button("Apply"),
                 buttonClose = HTML.button("Close"),
             ]),
