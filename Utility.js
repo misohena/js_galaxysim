@@ -121,7 +121,7 @@
     /**
      * 要素の絶対座標を求めます。
      */
-    var getElementAbsPos = Util.getElementAbsPos = function(elem)
+    var getElementAbsPos = Util.getElementAbsPos = function(elem, parent)
     {
         var x = 0;
         var y = 0;
@@ -129,6 +129,9 @@
             x += elem.offsetLeft;
             y += elem.offsetTop;
             elem = elem.offsetParent;
+            if(elem === parent){
+                break;
+            }
         }
 
         return [x, y];
