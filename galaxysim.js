@@ -1052,38 +1052,24 @@
         var win = this;
         Window.call(this, null, [
             HTML.div(null, [
-                HTML.text("Mass:"),
+                HTML.text("Mass(kg): "),
                 textboxMass = HTML.textbox(),
-                HTML.text("kg")
             ]),
             HTML.div(null, [
-                HTML.text("Radius:"),
+                HTML.text("Radius(m): "),
                 textboxRadius = HTML.textbox(),
-                HTML.text("m")
             ]),
             HTML.div(null, [
-                HTML.text("Position:"),
-                textboxPositionX = HTML.textbox(),
-                HTML.text("m, "),
-                textboxPositionY = HTML.textbox(),
-                HTML.text("m")
+                HTML.text("Position(m): "),
+                HTML.text(" X"), textboxPositionX = HTML.textbox(),
+                HTML.text(" Y"), textboxPositionY = HTML.textbox(),
             ]),
             HTML.div(null, [
-                HTML.text("Velocity:"),
-                textboxVelocityX = HTML.textbox(),
-                HTML.text("m/s, "),
-                textboxVelocityY = HTML.textbox(),
-                HTML.text("m/s")
-            ]),
-            HTML.div(null, [
-                HTML.text("Direction:"),
-                textboxDirection = HTML.textbox(),
-                HTML.text("deg")
-            ]),
-            HTML.div(null, [
-                HTML.text("Speed:"),
-                textboxSpeed = HTML.textbox(),
-                HTML.text("m/s")
+                HTML.text("Velocity(m/s): "),
+                HTML.text(" X"), textboxVelocityX = HTML.textbox(),
+                HTML.text(" Y"), textboxVelocityY = HTML.textbox(), HTML.br(),
+                HTML.text(" Direction(deg): "), textboxDirection = HTML.textbox(), HTML.br(),
+                HTML.text(" Speed(m/s): "), textboxSpeed = HTML.textbox(),
             ]),
             HTML.div({className: "footer"}, [
                 buttonApply = HTML.button("Apply"),
