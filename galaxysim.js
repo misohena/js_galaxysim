@@ -773,6 +773,7 @@
      * class EditMode
      */
     function EditMode(space, conductor, view){
+        var editMode = this;
         this.view = view;
         var cv = view.getCanvas();
 
@@ -781,6 +782,16 @@
         var OBJ_PROP_WINDOW_START_Y = 100;
         var OBJ_PROP_WINDOW_STEP_Y = 24;
         var OBJ_PROP_WINDOW_COUNT_Y = 5;
+        function openObjectPropertyWindow(obj){
+            ObjectPropertyWindow.open(
+                obj, space,
+                OBJ_PROP_WINDOW_START_X,
+                OBJ_PROP_WINDOW_START_Y+OBJ_PROP_WINDOW_STEP_Y*objPropWindowY,
+                editMode);
+            if(++objPropWindowY >= OBJ_PROP_WINDOW_COUNT_Y){
+                objPropWindowY = 0;
+            }
+        }
         
         var mouseHandler = setMouseHandler(
             cv, {
@@ -800,14 +811,8 @@
                         stroke.downObjY = Vector.getY(obj.position);
                         
                         setCurrentEditTarget(obj);
-                        
-                        openObjectPropertyWindow(
-                            obj, space,
-                            OBJ_PROP_WINDOW_START_X,
-                            OBJ_PROP_WINDOW_START_Y+OBJ_PROP_WINDOW_STEP_Y*objPropWindowY);
-                        if(++objPropWindowY >= OBJ_PROP_WINDOW_COUNT_Y){
-                            objPropWindowY = 0;
-                        }
+
+                        openObjectPropertyWindow(obj);
                         return;
                     }
 
@@ -969,7 +974,7 @@
         this.close = function(){
             releaseCurrentEditTarget();
             mouseHandler.release();
-            closeObjectPropertyWindowAll(space);
+            ObjectPropertyWindow.closeAll(space);
         };
     }
     EditMode.title = "Editing Mode";
@@ -1142,6 +1147,11 @@
             win.setCaptionText("Object #"+obj.getId());
         }
 
+        //
+        var editMode = null;
+        function setEditModeObject(em){
+            editMode = em;
+        }
         // 閉じる
         function close(){
             setSpace(null);
@@ -1158,6 +1168,7 @@
         // public methods.
         
         this.getElement = function() { return win.getElement();};
+        this.setEditModeObject = setEditModeObject;
         this.setSpace = setSpace;
         this.setObject = setObject;
         this.close = close;
@@ -1165,18 +1176,19 @@
         buttonClose.addEventListener("click", close, false);
         buttonApply.addEventListener("click", applyChanges, false);
     }
-    function openObjectPropertyWindow(obj, space, windowX, windowY){
+    ObjectPropertyWindow.open = function(obj, space, windowX, windowY, editMode){
         if(obj._propertyWindow){
             return; //already opened.
         }
         var propWin = new ObjectPropertyWindow();
         setWindowPosition(propWin.getElement(), windowX, windowY);
+        propWin.setEditModeObject(editMode);
         propWin.setSpace(space);
         propWin.setObject(obj);
         document.body.appendChild(propWin.getElement());
         obj._propertyWindow = propWin;
-    }
-    function closeObjectPropertyWindow(obj){
+    };
+    ObjectPropertyWindow.close = function(obj){
         if(obj){
             var w = obj._propertyWindow;
             if(w){
@@ -1184,11 +1196,13 @@
                 w.close();
             }
         }
-    }
-    function closeObjectPropertyWindowAll(space){
+    };
+    ObjectPropertyWindow.closeAll = function(space){
         for(var i = 0; i < space.objects.length; ++i){
-            closeObjectPropertyWindow(space.objects[i]);
+            ObjectPropertyWindow.close(space.objects[i]);
         }
+    };
+
     }
     
     
