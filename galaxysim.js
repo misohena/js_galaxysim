@@ -4,7 +4,6 @@
 // require Vector.js
 // require Space.js
 
-// TODO: EditMode時にEditModeWindowを表示する。物体の追加や状態の保存・復元ができる。
 // TODO: 新しい物体を追加できるようにする。
 // TODO: スクリプトから新しい物体を追加できるようにする。
 // TODO: プリセット空間に空の空間を追加する。
@@ -971,6 +970,8 @@
                 view.setExtraPainter(null);
             }
         }
+        // Edit Mode Menu
+        var editWin = EditModeWindow.open(this);
 
         // manage tracking state.
         var tracker = null;
@@ -987,6 +988,7 @@
         
         // public
 
+        this.openObjectPropertyWindow = openObjectPropertyWindow;
         this.setEditTarget = setCurrentEditTarget;
         this.setTrackingTarget = setTrackingTarget;
         this.close = function(){
@@ -994,6 +996,7 @@
             releaseCurrentEditTarget();
             mouseHandler.release();
             ObjectPropertyWindow.closeAll(space);
+            editWin.removeFromParent();
         };
     }
     EditMode.title = "Editing Mode";
@@ -1254,7 +1257,35 @@
         }
     };
 
+
+    /**
+     * class EditModeWindow
+     */
+    function EditModeWindow(editMode) {
+        var buttonAddObject;
+        var buttonScript;
+        Window.call(this, null, [
+            buttonAddObject = HTML.button("Add Object"),
+            buttonScript = HTML.button("Script"),
+        ]);
+        this.setCaptionText("Edit Mode");
+
+        buttonAddObject.addEventListener("click", function(){
+            // add new object to space
+            var newpos = editMode.getView().getCenter();
+            var newobj = new SpaceObject(
+                1000, 1000, Vector.newXY(Vector2D.getX(newpos), Vector2D.getY(newpos)));
+            editMode.getSpace().addObject(newobj);
+            // select object
+            editMode.setEditTarget(newobj);
+            editMode.openObjectPropertyWindow(newobj);
+        }, false);
     }
+    EditModeWindow.open = function(editMode){
+        var editWin = new EditModeWindow(editMode);
+        document.body.appendChild(editWin.getElement());
+        return editWin;
+    };
     
     
     var MODES = [ViewMode, EditMode];
