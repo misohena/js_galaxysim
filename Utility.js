@@ -21,7 +21,12 @@
             if(children){
                 children.forEach(function(c){
                     if(c){
-                        elem.appendChild(c);
+                        if(typeof c == "string"){
+                            elem.appendChild(HTML.text(c));
+                        }
+                        else{
+                            elem.appendChild(c);
+                        }
                     }
                 });
             }
@@ -72,6 +77,24 @@
         },
         br: function(){
             return HTML.createElement("br", {});
+        },
+        table: function(attrs, rows){
+            var children = rows.map(function(row){
+                return (row instanceof Array) ? HTML.tr(null, row)
+                    : row;
+            });
+            return HTML.createElement("table", attrs, children);
+        },
+        tr: function(attrs, cells){
+            var children = cells.map(function(cell){
+                return (cell instanceof Array) ? HTML.td(null, cell)
+                    : (typeof cell == "string") ? HTML.td(null, [cell])
+                    : cell;
+            });
+            return HTML.createElement("tr", attrs, children);
+        },
+        td: function(attrs, children){
+            return HTML.createElement("td", attrs, children);
         }
     };
 
