@@ -227,6 +227,9 @@
         win.getElement = function(){
             return windowDiv;
         }
+        win.getCaptionElement = function(){
+            return captionDiv;
+        }
         win.setCaptionText = function(str){
             captionText.nodeValue = str;
         };
