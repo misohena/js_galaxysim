@@ -4,7 +4,7 @@
 // require Vector.js
 // require Space.js
 
-// TODO: 新しい物体を追加できるようにする。
+// TODO: 同じ座標の物体が複数あると、ツリーの構築が終わらない問題を解決する。
 // TODO: スクリプトから新しい物体を追加できるようにする。
 // TODO: プリセット空間に空の空間を追加する。
 // TODO: 現在の状態をテキストに出力できるようにする。
@@ -13,6 +13,7 @@
 // TODO: View下のコントロールを枠で囲む。
 // TODO: 衝突判定の有無を切り替えられるようにする。
 // TODO: jsファイルを分割する。シミュレーションのコア部分をspace.jsへ。プリセット状態はpresets.jsへ。
+// TODO: EditModeでも物体の追跡ができるようにする。ObjectPropertyWindowに追跡ボタンをつける。というか、ObjectPropertyWindowはObjectEditWindowまたはObjectWindowに改名すべき？　追跡中は速度ベクトルドラッグ時に、追跡対象物体に対する相対速度計算が必要になるので注意。
 // TODO: index.htmlを書く。
 // TODO: 公開する。
 
