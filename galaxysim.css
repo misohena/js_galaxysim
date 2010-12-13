@@ -8,6 +8,21 @@ canvas {
   background-color: #000000;
 }
 
+/* EditModeWindow */
+div.window-caption > div {
+  float: right;
+}
+div.window-caption > div > input {
+  margin: -2px 0 0 0;
+  font-size: 80%;
+  background-color: black;
+  border: 1px solid #00b0ff;
+  color: white;
+}
+div.window-caption > div > input:hover {
+  background-color: #0080ff;
+}
+
 div.window-client > div.footer {
   text-align: right;
 }
@@ -16,7 +31,7 @@ div.window-client > div.footer {
 div.window {
    background-color: #000000;
    border: 1px solid #00b0ff;
-   padding: 0 1em 1em 1em;
+   padding: 0 1em 0.3em 1em;
 
    position: absolute;
    top: 10px;
@@ -28,8 +43,8 @@ div.window select {
 }
 div.window-caption {
    cursor: move;
-   margin: 0 -1em 1em -1em;
-   padding: 0.1em 0.5em 0.1em 0.5em;
+   margin: 0 -1em 0.5em -1em;
+   padding: 2px 0.5em 0.1em 0.5em;
    border-bottom: 1px solid #00b0ff;
    color: #00b0ff;
 }
