@@ -134,32 +134,10 @@
 //            Vector.addMul(this.velocity, dt, this.acceleration,  this.velocity);
 //            Vector.addMul(this.position, dt, this.velocity,  this.position);
 //        }
-        addEventListener: function(type, listener){
-            var list = this.eventListeners[type];
-            if(!list){
-                list = this.eventListeners[type] = [];
-            }
-            if(list.indexOf(listener) == -1){
-                list.push(listener);
-            }
+
+        dispatchRemoveEvent: function(){
+            this.dispatchEvent({type:"removefromspace", target:this});
         },
-        removeEventListener: function(type, listener){
-            var list = this.eventListeners[type];
-            if(list){
-                var index = list.indexOf(listener);
-                if(index != -1){
-                    list.splice(index, 1);
-                }
-            }
-        },
-        dispatchEvent: function(e){
-            var list = this.eventListeners[e.type];
-            if(list){
-                for(var i = 0; i < list.length; ++i){
-                    list[i](e);
-                }
-            }
-        }
     };
     EventDispatcher.addMethodTo(SpaceObject.prototype);
 
@@ -312,6 +290,13 @@
         getTheta: function() { return this.theta;},
         setTheta: function(v) { if(isFinite(v)){this.theta = v; this.theta2 = v*v;}},
         addObject: function(o) { this.objects.push(o);},
+        removeObject: function(o) {
+            var index = this.objects.indexOf(o);
+            if(index >= 0){
+                this.objects.splice(index, 1);
+                o.dispatchRemoveEvent();
+            }
+        },
         step: function(dt) {
             stepObjects(dt, this.objects, this.eps2, this.theta2);
             removeDestroyed(this.objects);
@@ -348,6 +333,7 @@
         var i;
         for(i = 0; i < objects.length; ++i){
             if(objects[i].isDestroyed()){
+                objects[i].dispatchRemoveEvent();
                 break;
             }
         }
@@ -358,6 +344,9 @@
         for(++i; i < objects.length; ++i){
             if(!objects[i].isDestroyed()){
                 objects[j++] = objects[i];
+            }
+            else{
+                objects[i].dispatchRemoveEvent();
             }
         }
         objects.length = j;
