@@ -67,13 +67,9 @@
             }
         },
         select: function(options, attrs){
-            var sel = HTML.createElement("select", attrs);
-            for(var oi = 0; oi < options.length; ++oi){
-                var opt = HTML.createElement("option");
-                opt.appendChild(options[oi]);
-                sel.appendChild(opt);
-            }
-            return sel;
+            return HTML.createElement("select", attrs, options.map(function(oc){
+                return HTML.createElement("option", null, [oc]);
+            }));
         },
         br: function(){
             return HTML.createElement("br", {});
