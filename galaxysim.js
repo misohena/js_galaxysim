@@ -41,12 +41,12 @@
     var DRAGGING_START_LENGTH = 3;
     var PICKING_RADIUS = 4;
 
-    var VEL_LINE_LENGTH = 50; //[px]
-    var VEL_LINE_LENGTH_MIN = VEL_LINE_LENGTH/4;
-    var VEL_LINE_LENGTH_MAX = VEL_LINE_LENGTH*4;
+    var VEL_ARROW_LENGTH = 50; //[px]
+    var VEL_ARROW_LENGTH_MIN = VEL_ARROW_LENGTH/4;
+    var VEL_ARROW_LENGTH_MAX = VEL_ARROW_LENGTH*4;
 
-    var VEL_LINE_HEAD_ARROW_LENGTH = 8;
-    var VEL_LINE_HEAD_ARROW_WIDTH = 8;
+    var VEL_ARROW_HEAD_ARROW_LENGTH = 8;
+    var VEL_ARROW_HEAD_ARROW_WIDTH = 8;
     
     //
     // Utilities
@@ -271,11 +271,7 @@
         }
     }
 
-    function enumInitialStateTitlesAsHTMLText(states){
-        return states.map(function(s) { return HTML.text(s.title);});
-    }
-    
-    var presetInitialStates = [
+    var PRESET_INITIAL_STATES = [
         // Title, SpaceFactory, ViewScale, ViewX, ViewY
         {title:"Pseudo-Solar System", factory:function(){
             var space = new Space();
@@ -786,7 +782,10 @@
             setTrackingTarget(null); //release object tracker.
         };
     }
-    ViewMode.title = "View/Tracking Mode";
+    ViewMode.title = "View Mode";
+
+
+
 
     /**
      * class EditMode
@@ -796,6 +795,8 @@
         this.view = view;
         var cv = view.getCanvas();
 
+        // Object Property Windows
+        
         var objPropWindowY = 0;
         var OBJ_PROP_WINDOW_START_X = CANVAS_WIDTH + 20;
         var OBJ_PROP_WINDOW_START_Y = 100;
@@ -811,62 +812,85 @@
                 objPropWindowY = 0;
             }
         }
+
+        // Change Velocity by Mouse Dragging
+        
+        function beginDragVelocity(stroke){
+            if(currentEditTarget && currentEditTarget.isPositionOnHeadArrow(stroke.downPos)){
+                stroke.downVelArrowEditTarget = currentEditTarget;
+                stroke.downVelArrowScale = currentEditTarget.getVelArrowScale();
+                return true;
+            }
+            return false;
+        }
+        function dragVelocity(stroke){
+            if(stroke.downVelArrowEditTarget){
+                var et = stroke.downVelArrowEditTarget;
+                var obj = et.getObject();
+                var velArrowScale = stroke.downVelArrowScale;//et.getVelArrowScale();
+                var tail = et.getVelArrowTail();
+
+                var newVel2D = Vector2D.negateY(Vector2D.mul(1/velArrowScale, Vector2D.sub(stroke.currPos, tail)));
+                if(Vector2D.isFinite(newVel2D)){
+                    Vector.setXY(
+                        obj.velocity,
+                        Vector2D.getX(newVel2D),
+                        Vector2D.getY(newVel2D) );
+                    space.dispatchObjectChangedEvent();
+                    view.invalidateAndClear();
+                }
+            }
+        }
+
+        // Change Position by Mouse Dragging
+
+        function beginDragPositionAndSelectObject(stroke){
+            var obj = view.getObjectAtPointOnCanvas(stroke.downPos);
+            if(obj){
+                stroke.downObj = obj;
+                stroke.downObjX = Vector.getX(obj.position);
+                stroke.downObjY = Vector.getY(obj.position);
+
+                // select editing target & open property window
+                setCurrentEditTarget(obj);
+                openObjectPropertyWindow(obj);
+                return true;
+            }
+            return false;
+        }
+
+        function dragPosition(stroke){
+            if(stroke.downObj){
+                var obj = stroke.downObj;
+                var newX = stroke.downObjX +  (stroke.currPos[0] - stroke.downPos[0])/view.getScale();
+                var newY = stroke.downObjY + -(stroke.currPos[1] - stroke.downPos[1])/view.getScale();
+                Vector.setXY(obj.position, newX, newY);
+                space.dispatchObjectChangedEvent();
+                view.invalidateAndClear();
+            }
+        }
+        
         
         var mouseHandler = setMouseHandler(
             cv, {
                 down: function(stroke){
                     // drag head of velocity line.
-                    if(currentEditTarget && currentEditTarget.isPositionOnHeadArrow(stroke.downPos)){
-                        stroke.downVelLineEditTarget = currentEditTarget;
-                        stroke.downVelLineScale = currentEditTarget.getVelLineScale();
+                    if(beginDragVelocity(stroke)){
                         return;
                     }
-
                     // drag object.
-                    var obj = view.getObjectAtPointOnCanvas(stroke.downPos);
-                    if(obj){
-                        stroke.downObj = obj;
-                        stroke.downObjX = Vector.getX(obj.position);
-                        stroke.downObjY = Vector.getY(obj.position);
-                        
-                        setCurrentEditTarget(obj);
-
-                        openObjectPropertyWindow(obj);
+                    if(beginDragPositionAndSelectObject(stroke)){
                         return;
                     }
-
                     // scroll.
                     view.beginMouseDragScroll(stroke.downEvent);
                     //stroke.endStroke();
                 },
                 dragmove: function(stroke){
                     // drag head of velocity line.
-                    if(stroke.downVelLineEditTarget){
-                        var et = stroke.downVelLineEditTarget;
-                        var obj = et.getObject();
-                        var velLineScale = stroke.downVelLineScale;//et.getVelLineScale();
-                        var tail = et.getVelLineTail();
-
-                        var newVel2D = Vector2D.negateY(Vector2D.mul(1/velLineScale, Vector2D.sub(stroke.currPos, tail)));
-                        if(Vector2D.isFinite(newVel2D)){
-                            Vector.setXY(
-                                obj.velocity,
-                                Vector2D.getX(newVel2D),
-                                Vector2D.getY(newVel2D) );
-                            space.dispatchObjectChangedEvent();
-                            view.invalidateAndClear();
-                        }
-                    }
-                    
+                    dragVelocity(stroke);
                     // drag object.
-                    if(stroke.downObj){
-                        var obj = stroke.downObj;
-                        var newX = stroke.downObjX +  (stroke.currPos[0] - stroke.downPos[0])/view.getScale();
-                        var newY = stroke.downObjY + -(stroke.currPos[1] - stroke.downPos[1])/view.getScale();
-                        Vector.setXY(obj.position, newX, newY);
-                        space.dispatchObjectChangedEvent();
-                        view.invalidateAndClear();
-                    }
+                    dragPosition(stroke);
                 },
                 click: function(stroke){
                     if(!stroke.downObj){
@@ -876,67 +900,106 @@
             });
 
         // Current Edit Target
+        
         function EditTarget(obj){
-            var velLineScale = NaN;
+            var velArrowScale = NaN;
             
-            updateVelLineScale();
+            updateVelArrowScale();
             
-            function updateVelLineScaleInner(){
+            function updateVelArrowScaleInner(){
                 var speed = Vector.length(obj.velocity);
-                velLineScale = VEL_LINE_LENGTH/speed; // NaN,INF,-INF
+                velArrowScale = VEL_ARROW_LENGTH/speed; // NaN,INF,-INF
             }
-            function updateVelLineScale(){
-                if(isFinite(velLineScale)){
+            function updateVelArrowScale(){
+                if(isFinite(velArrowScale)){
                     var speed = Vector.length(obj.velocity);
-                    var velLinePixels = speed*velLineScale;
-                    if(velLinePixels > VEL_LINE_LENGTH_MAX ||
-                       velLinePixels < VEL_LINE_LENGTH_MIN){
-                        updateVelLineScaleInner();
+                    var velArrowPixels = speed*velArrowScale;
+                    if(velArrowPixels > VEL_ARROW_LENGTH_MAX ||
+                       velArrowPixels < VEL_ARROW_LENGTH_MIN){
+                        updateVelArrowScaleInner();
                     }
                 }
                 else{
-                    updateVelLineScaleInner();
+                    updateVelArrowScaleInner();
                 }
             }
-            function getVelLineScale(){
-                updateVelLineScale();
-                return isFinite(velLineScale) ? velLineScale : 1;
+            function getVelArrowScale(){
+                updateVelArrowScale();
+                return isFinite(velArrowScale) ? velArrowScale : 1;
             }
-            function getVelLineVec(){
-                updateVelLineScale();
-                if(isFinite(velLineScale)){
-                    return Vector2D.negateY(Vector2D.mul(velLineScale, obj.velocity));
+            function getVelArrowVec(){
+                updateVelArrowScale();
+                if(isFinite(velArrowScale)){
+                    return Vector2D.negateY(Vector2D.mul(velArrowScale, obj.velocity));
                 }
                 else{
-                    return Vector2D.newXY(VEL_LINE_LENGTH, 0);
+                    return Vector2D.newXY(VEL_ARROW_LENGTH, 0);
                 }
             }
-            function getVelLineTail(){
+            function getVelArrowTail(){
                 return view.convertSpaceToCanvas(obj.position);
             }
-            function getVelLineHead(){
-                return Vector2D.add(getVelLineTail(), getVelLineVec());
+            function getVelArrowHead(){
+                return Vector2D.add(getVelArrowTail(), getVelArrowVec());
             }
             function isPositionOnHeadArrow(pos){
-                var posRel = Vector2D.sub(pos, getVelLineTail());
-                var vec = getVelLineVec();
+                var posRel = Vector2D.sub(pos, getVelArrowTail());
+                var vec = getVelArrowVec();
                 var vecLen = Vector2D.length(vec);
                 var vecUnit = Vector2D.mul(1/vecLen, vec);
 
                 var y = Vector2D.dot(vecUnit, posRel);
                 var x = Vector2D.perpdot(vecUnit, posRel);
                 return y <= vecLen
-                    && y >= vecLen-VEL_LINE_HEAD_ARROW_LENGTH
-                    && Math.abs(x) < VEL_LINE_HEAD_ARROW_WIDTH/2;
+                    && y >= vecLen-VEL_ARROW_HEAD_ARROW_LENGTH
+                    && Math.abs(x) < VEL_ARROW_HEAD_ARROW_WIDTH/2;
+            }
+            function drawVelArrow(){
+                var ctx = view.getContext2D();
+                ctx.strokeStyle = "#ff8000";
+                ctx.fillStyle = "#ff8000";
+
+                // position circle
+                var tail = getVelArrowTail();
+                var tailX = Vector2D.getX(tail);
+                var tailY = Vector2D.getY(tail);
+                ctx.beginPath();
+                ctx.arc(tailX, tailY, 10, 0, 2*Math.PI, false);
+                ctx.stroke();
+
+                // velocity arrow
+                var head = getVelArrowHead();
+                var headX = Vector2D.getX(head);
+                var headY = Vector2D.getY(head);
+                ctx.beginPath();
+                ctx.moveTo(tailX, tailY);
+                ctx.lineTo(headX, headY);
+                ctx.stroke();
+
+                var vx = headX - tailX;
+                var vy = headY - tailY;
+                var vlen = Math.sqrt(vx*vx+vy*vy);
+                var al = VEL_ARROW_HEAD_ARROW_LENGTH;
+                var aw = VEL_ARROW_HEAD_ARROW_WIDTH/2;
+                vx /= vlen;
+                vy /= vlen;
+                ctx.beginPath();
+                ctx.moveTo(headX, headY);
+                ctx.lineTo(headX-vx*al-vy*aw, headY-vy*al+vx*aw);
+                ctx.lineTo(headX-vx*al+vy*aw, headY-vy*al-vx*aw);
+                ctx.closePath();
+                ctx.fill();
             }
             return {
-                getVelLineTail: getVelLineTail,
-                getVelLineHead: getVelLineHead,
-                getVelLineScale: getVelLineScale,
+                getVelArrowTail: getVelArrowTail,
+                getVelArrowHead: getVelArrowHead,
+                getVelArrowScale: getVelArrowScale,
                 isPositionOnHeadArrow: isPositionOnHeadArrow,
+                drawVelArrow: drawVelArrow,
                 getObject: function() { return obj;},
             };
         }
+        
         var currentEditTarget = null;
         function setCurrentEditTarget(obj){
             if(!obj || obj.isDestroyed()){
@@ -949,41 +1012,7 @@
             }
 
             currentEditTarget = new EditTarget(obj);
-            
-            view.setExtraPainter(function drawVelocityArrow(){
-                var ctx = view.getContext2D();
-                ctx.strokeStyle = "#ff8000";
-                ctx.fillStyle = "#ff8000";
-                
-                var tail = currentEditTarget.getVelLineTail();
-                var tailX = Vector2D.getX(tail);
-                var tailY = Vector2D.getY(tail);
-                ctx.beginPath();
-                ctx.arc(tailX, tailY, 10, 0, 2*Math.PI, false);
-                ctx.stroke();
-
-                var head = currentEditTarget.getVelLineHead();
-                var headX = Vector2D.getX(head);
-                var headY = Vector2D.getY(head);
-                ctx.beginPath();
-                ctx.moveTo(tailX, tailY);
-                ctx.lineTo(headX, headY);
-                ctx.stroke();
-
-                var vx = headX - tailX;
-                var vy = headY - tailY;
-                var vlen = Math.sqrt(vx*vx+vy*vy);
-                var al = VEL_LINE_HEAD_ARROW_LENGTH;
-                var aw = VEL_LINE_HEAD_ARROW_WIDTH/2;
-                vx /= vlen;
-                vy /= vlen;
-                ctx.beginPath();
-                ctx.moveTo(headX, headY);
-                ctx.lineTo(headX-vx*al-vy*aw, headY-vy*al+vx*aw);
-                ctx.lineTo(headX-vx*al+vy*aw, headY-vy*al-vx*aw);
-                ctx.closePath();
-                ctx.fill();
-            });
+            view.setExtraPainter(currentEditTarget.drawVelArrow);
 
             currentEditTarget.getObject().addEventListener("removefromspace", onRemoveCurrentEditTarget);
             currentEditTarget.getObject().addEventListener("merged", onMergedCurrentEditTarget);
@@ -1010,7 +1039,7 @@
         // Edit Mode Menu
         var editWin = EditModeWindow.open(this);
 
-        // manage tracking state.
+        // tracking state.
         var tracker = null;
         function setTrackingTarget(obj){
             view.invalidateAndClear();
@@ -1040,114 +1069,109 @@
     }
     EditMode.title = "Editing Mode";
 
+
+
     /**
      * class ObjectPropertyWindow
      */
     function ObjectPropertyWindow(){
-        var buttonDelete;
-        var buttonSelect;
-        var buttonTrack;
-        var textboxMass;
-        var textboxRadius;
-        var textboxPositionX;
-        var textboxPositionY;
-        var textboxVelocityX;
-        var textboxVelocityY;
-        var textboxDirection;
-        var textboxSpeed;
-        var buttonApply;
-        var buttonClose;
         var win = this;
+        // Window Contents
+        var c = {};
         Window.call(this, null, [
             HTML.div(null, [
-                HTML.text("Mass(kg): "),
-                textboxMass = HTML.textbox(),
+                "Mass(kg): ", c.textboxMass = HTML.textbox(),
             ]),
             HTML.div(null, [
-                HTML.text("Radius(m): "),
-                textboxRadius = HTML.textbox(),
+                "Radius(m): ", c.textboxRadius = HTML.textbox(),
             ]),
             HTML.div(null, [
-                HTML.text("Position(m): "),
-                HTML.text(" X"), textboxPositionX = HTML.textbox(),
-                HTML.text(" Y"), textboxPositionY = HTML.textbox(),
+                "Position(m): ",
+                " X", c.textboxPositionX = HTML.textbox(),
+                " Y", c.textboxPositionY = HTML.textbox(),
             ]),
             HTML.div(null, [
-                HTML.text("Velocity(m/s): "),
-                HTML.text(" X"), textboxVelocityX = HTML.textbox(),
-                HTML.text(" Y"), textboxVelocityY = HTML.textbox(), HTML.br(),
-                HTML.text(" Direction(deg): "), textboxDirection = HTML.textbox(), HTML.br(),
-                HTML.text(" Speed(m/s): "), textboxSpeed = HTML.textbox(),
+                "Velocity(m/s): ",
+                " X", c.textboxVelocityX = HTML.textbox(),
+                " Y", c.textboxVelocityY = HTML.textbox(), HTML.br(),
+                " Direction(deg): ", c.textboxDirection = HTML.textbox(), HTML.br(),
+                " Speed(m/s): ", c.textboxSpeed = HTML.textbox(),
             ]),
             HTML.div({className: "footer"}, [
-                buttonApply = HTML.button("Apply"),
-                buttonClose = HTML.button("Close"),
+                c.buttonApply = HTML.button("Apply"),
+                c.buttonClose = HTML.button("Close"),
             ]),
         ]);
         this.getCaptionElement().appendChild(HTML.div(null, [
-            buttonDelete = HTML.button("Delete"),
-            buttonSelect = HTML.button("Select"),
-            buttonTrack = HTML.button("Track")
+            c.buttonDelete = HTML.button("Delete"),
+            c.buttonSelect = HTML.button("Select"),
+            c.buttonTrack = HTML.button("Track")
         ]));
 
-        var controls = [
-            {elem:textboxMass, gettor:function(o){return o.mass;}, settor:function(o, v){o.mass = v;}},
-            {elem:textboxRadius, gettor:function(o){return o.radius;}, settor:function(o, v){o.radius = v;}},
-            {elem:textboxPositionX, gettor:function(o){return Vector.getX(o.position);}, settor:function(o, v){Vector.setX(o.position, v);}},
-            {elem:textboxPositionY, gettor:function(o){return Vector.getY(o.position);}, settor:function(o, v){Vector.setY(o.position, v);}},
-            {elem:textboxVelocityX, gettor:function(o){return Vector.getX(o.velocity);}, settor:function(o, v){Vector.setX(o.velocity, v);}},
-            {elem:textboxVelocityY, gettor:function(o){return Vector.getY(o.velocity);}, settor:function(o, v){Vector.setY(o.velocity, v);}},
-            {elem:textboxDirection, gettor:function(o){return Math.atan2(Vector.getY(o.velocity), Vector.getX(o.velocity))/Math.PI*180;}, settor:function(o, v){v = v/180*Math.PI; Vector.mul(Vector.length(o.velocity), Vector.newXY(Math.cos(v), Math.sin(v)),  o.velocity);}},
-            {elem:textboxSpeed, gettor:function(o){return Vector.length(o.velocity);}, settor:function(o, v){var speed = Vector.length(o.velocity); if(speed > 0){Vector.mul(v/speed, o.velocity, o.velocity);}}},
+        // Object Properties
+        var properties = [
+            {elem:c.textboxMass, gettor:function(o){return o.mass;}, settor:function(o, v){o.mass = v;}},
+            {elem:c.textboxRadius, gettor:function(o){return o.radius;}, settor:function(o, v){o.radius = v;}},
+            {elem:c.textboxPositionX, gettor:function(o){return Vector.getX(o.position);}, settor:function(o, v){Vector.setX(o.position, v);}},
+            {elem:c.textboxPositionY, gettor:function(o){return Vector.getY(o.position);}, settor:function(o, v){Vector.setY(o.position, v);}},
+            {elem:c.textboxVelocityX, gettor:function(o){return Vector.getX(o.velocity);}, settor:function(o, v){Vector.setX(o.velocity, v);}},
+            {elem:c.textboxVelocityY, gettor:function(o){return Vector.getY(o.velocity);}, settor:function(o, v){Vector.setY(o.velocity, v);}},
+            {elem:c.textboxDirection,
+             gettor:function(o){
+                 return Math.atan2(Vector.getY(o.velocity),
+                                   Vector.getX(o.velocity))/Math.PI*180;},
+             settor:function(o, v){
+                 v = v/180*Math.PI;
+                 Vector.mul(
+                     Vector.length(o.velocity),
+                     Vector.newXY(Math.cos(v), Math.sin(v)),
+                     o.velocity);}},
+            {elem:c.textboxSpeed,
+             gettor:function(o){
+                 return Vector.length(o.velocity);},
+             settor:function(o, v){
+                 var speed = Vector.length(o.velocity);
+                 if(speed > 0){Vector.mul(v/speed, o.velocity, o.velocity);}}},
         ];
-        function updateControls(){
-            if(!targetObject){
-                return;
-            }
-            for(var i = 0; i < controls.length; ++i){
-                if(!controls[i].changed && i != currentFocusControlIndex){
-                    var value = controls[i].gettor(targetObject);
+        function updateElements(){
+            if(!targetObject){ return; }
+            for(var i = 0; i < properties.length; ++i){
+                if(!properties[i].changed && i != currentFocusControlIndex){
+                    var value = properties[i].gettor(targetObject);
                     if(isFinite(value)){
-                        controls[i].elem.value = Math.abs(value) < 100000 ? value.toString() : value.toExponential();
+                        properties[i].elem.value = Math.abs(value) < 100000 ? value.toString() : value.toExponential();
                     }
                 }
             }
         }
         function applyChanges(){
-            if(!targetObject){
-                return;
-            }
-            if(hasPropertyChanged){
-                for(var i = 0; i < controls.length; ++i){
-                    if(controls[i].changed){
-                        var value = parseFloat(controls[i].elem.value);
-                        if(isFinite(value)){
-                            controls[i].settor(targetObject, value);
-                        }
+            if(!targetObject){ return; }
+            
+            for(var i = 0; i < properties.length; ++i){
+                if(properties[i].changed){
+                    var value = parseFloat(properties[i].elem.value);
+                    if(isFinite(value)){
+                        properties[i].settor(targetObject, value);
                     }
                 }
-                if(targetSpace){
-                    targetSpace.dispatchObjectChangedEvent();
-                }
-                clearPropertyChangedAll();
             }
-            updateControls();
+            if(targetSpace){
+                targetSpace.dispatchObjectChangedEvent();
+            }
+            clearPropertyChangedAll();
+            updateElements();
         }
         function updateApplyButtonEnabled(){
-            buttonApply.disabled = !hasPropertyChanged;
+            c.buttonApply.disabled = properties.every(function(prop){ return !prop.changed;});
         }
         
-        // プロパティ変更記録。
-        var hasPropertyChanged = false;
         function setPropertyChanged(index){
-            hasPropertyChanged = true;
-            controls[index].changed = true;
+            properties[index].changed = true;
             updateApplyButtonEnabled();
         }
         function clearPropertyChangedAll(){
-            hasPropertyChanged = false;
-            for(var i = 0; i < controls.length; ++i){
-                controls[i].changed = false;
+            for(var i = 0; i < properties.length; ++i){
+                properties[i].changed = false;
             }
             updateApplyButtonEnabled();
         }
@@ -1158,38 +1182,38 @@
         var currentFocusControlValue = 0;
         function changeCurrentFocus(newIndex){
             if(currentFocusControlIndex >= 0){
-                var newValue = parseFloat(controls[currentFocusControlIndex].elem.value);
+                var newValue = parseFloat(properties[currentFocusControlIndex].elem.value);
                 if(isFinite(newValue) && newValue != currentFocusControlValue){
                     setPropertyChanged(currentFocusControlIndex);
                 }
             }
             currentFocusControlIndex = newIndex;
             if(currentFocusControlIndex >= 0){
-                currentFocusControlValue = targetObject ? controls[currentFocusControlIndex].gettor(targetObject) : 0;
+                currentFocusControlValue = targetObject ? properties[currentFocusControlIndex].gettor(targetObject) : 0;
             }
         }
         function observeControlChange(index){
-            controls[index].elem.addEventListener("focus", function(e){
+            properties[index].elem.addEventListener("focus", function(e){
                 changeCurrentFocus(index);
             }, false);
-            controls[index].elem.addEventListener("blur", function(e){
+            properties[index].elem.addEventListener("blur", function(e){
                 changeCurrentFocus(-1);
             }, false);
         }
-        for(var i = 0; i < controls.length; ++i){
+        for(var i = 0; i < properties.length; ++i){
             observeControlChange(i);
         }
 
-        // 空間と対象オブジェクト
+        // link Space and Object
         var targetObject = null;
         var targetSpace = null;
         function setSpace(space){
             if(targetSpace){
-                targetSpace.removeEventListener("objectchanged", updateControls);
+                targetSpace.removeEventListener("objectchanged", updateElements);
             }
             targetSpace = space;
             if(targetSpace){
-                targetSpace.addEventListener("objectchanged", updateControls);
+                targetSpace.addEventListener("objectchanged", updateElements);
             }
         }
         function setObject(obj){
@@ -1200,7 +1224,7 @@
             targetObject = obj;
             if(targetObject){
                 clearPropertyChangedAll();
-                updateControls();
+                updateElements();
 
                 win.setCaptionText("Object #"+targetObject.getId());
 
@@ -1220,45 +1244,51 @@
             }
         }
 
-        //
+        // link EditMode
         var editMode = null;
         function setEditModeObject(em){
             editMode = em;
         }
         
-        //
+        // Object Operations.
+        
         function deleteObject(){
             if(targetSpace && targetObject){
                 targetSpace.removeObject(targetObject);
                 close();
             }
         }
-        buttonDelete.addEventListener("click", deleteObject, false);
         
         function selectObject(){
             if(targetSpace && targetObject && editMode){
                 editMode.setEditTarget(targetObject);
             }
         }
-        buttonSelect.addEventListener("click", selectObject, false);
         
         function trackObject(){
             if(targetSpace && targetObject && editMode){
                 editMode.setTrackingTarget(targetObject);
             }
         }
-        buttonTrack.addEventListener("click", trackObject, false);
+
+        // buttons
         
-        // 閉じる
+        c.buttonDelete.addEventListener("click", deleteObject, false);
+        c.buttonSelect.addEventListener("click", selectObject, false);
+        c.buttonTrack.addEventListener("click", trackObject, false);
+        
+        c.buttonClose.addEventListener("click", close, false);
+        c.buttonApply.addEventListener("click", applyChanges, false);
+        
+        // Window Operation.
         function close(){
             if(targetObject){
                 var obj = targetObject;
                 setObject(null);
-                ObjectPropertyWindow.close(obj);
+                ObjectPropertyWindow.close(obj); //call this method recursive.
             }
             setSpace(null);
             
-
             win.removeFromParent();
         }
 
@@ -1269,8 +1299,6 @@
         this.setObject = setObject;
         this.close = close;
         
-        buttonClose.addEventListener("click", close, false);
-        buttonApply.addEventListener("click", applyChanges, false);
     }
     ObjectPropertyWindow.open = function(obj, space, windowX, windowY, editMode){
         if(obj._propertyWindow){
@@ -1298,6 +1326,7 @@
             ObjectPropertyWindow.close(space.objects[i]);
         }
     };
+
 
 
     /**
@@ -1364,31 +1393,31 @@
         var epsilonTextbox;
         var thetaTextbox;
         var controlDiv = HTML.div({}, [
-            initStateSelect = HTML.select(enumInitialStateTitlesAsHTMLText(presetInitialStates)),
+            initStateSelect = HTML.select(PRESET_INITIAL_STATES.map(function(s) { return s.title;})),
             initButton = HTML.button("Init"),
             startButton = HTML.button("Start/Stop"),
             visibleAxisCheckbox = HTML.checkbox(view.getVisibleAxis()),
-            HTML.text("Axis"),
+            "Axis",
             enabledBlurCheckbox = HTML.checkbox(view.getEnabledBlur()),
-            HTML.text("Blur"),
-            modeSelect = HTML.select(MODES.map(function(item){return HTML.text(item.title);})),
+            "Blur",
+            modeSelect = HTML.select(MODES.map(function(item){return item.title;})),
             HTML.br(),
-            HTML.text("time slice:"),
+            "time slice:",
             timesliceTextbox = HTML.textbox(""),
-            HTML.text("second"),
+            "second",
             HTML.br(),
-            HTML.text("epsilon:"),
+            "epsilon:",
             epsilonTextbox = HTML.textbox(""),
-            HTML.text("meter (potential=G*m/sqrt(r^2+epsilon^2))"),
+            "meter (potential=G*m/sqrt(r^2+epsilon^2))",
             HTML.br(),
-            HTML.text("theta:"),
+            "theta:",
             thetaTextbox = HTML.textbox(""),
         ]);
         document.body.appendChild(controlDiv);
 
         initButton.addEventListener("click", function(e){
             conductor.stop();
-            initSpace(presetInitialStates[initStateSelect.selectedIndex]);
+            initSpace(PRESET_INITIAL_STATES[initStateSelect.selectedIndex]);
         }, false);
         startButton.addEventListener("click", function(e){
             conductor.toggleStartStop();
@@ -1436,7 +1465,7 @@
             modeSelect.selectedIndex = 0;
         }
 
-        initSpace(presetInitialStates[0]);
+        initSpace(PRESET_INITIAL_STATES[0]);
     }
     
     thispkg.App = {
