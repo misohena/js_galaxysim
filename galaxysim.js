@@ -23,7 +23,6 @@
     var Util = thispkg.Util;
     var Vector = thispkg.Vector;
     var Vector2D = thispkg.Vector2D;
-    var Vector2DArray = thispkg.Vector2DArray;
     var Space = thispkg.Space;
     var SpaceObject = thispkg.SpaceObject;
     var SpaceView = thispkg.SpaceView;
@@ -118,7 +117,7 @@
             }
             currStroke.currEvent = e1;
             currStroke.currPos = getMousePosOnElement(elem, e1);
-            if(!currStroke.dragging && Vector2DArray.distance(currStroke.downPos, currStroke.currPos) > DRAGGING_START_LENGTH){
+            if(!currStroke.dragging && Vector2D.distance(currStroke.downPos, currStroke.currPos) > DRAGGING_START_LENGTH){
                 // dragging starts.
                 currStroke.dragging = true;
                 fcall("dragbegin");
@@ -173,12 +172,12 @@
             parent,
             {
                 down: function(stroke){
-                    stroke.downWindowPos = Util.getElementAbsPos(windowDiv);
+                    stroke.downWindowPos = getElementAbsPos(windowDiv);
                 },
                 move: function(stroke){
-                    var currWindowPos = Vector2DArray.add(
+                    var currWindowPos = Vector2D.add(
                         stroke.downWindowPos,
-                        Vector2DArray.sub(
+                        Vector2D.sub(
                             stroke.currPos,
                             stroke.downPos));
                     setWindowPosition(windowDiv,
