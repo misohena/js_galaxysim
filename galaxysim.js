@@ -5,7 +5,6 @@
 // require Space.js
 
 // TODO: 同じ座標の物体が複数あると、ツリーの構築が終わらない問題を解決する。
-// TODO: スクリプトから新しい物体を追加できるようにする。
 // TODO: プリセット空間に空の空間を追加する。
 // TODO: 現在の状態をテキストに出力できるようにする。
 // TODO: jsonテキストから状態を復元できるようにする。
@@ -1351,12 +1350,100 @@
             editMode.setEditTarget(newobj);
             editMode.openObjectPropertyWindow(newobj);
         }, false);
+
+        buttonScript.addEventListener("click", function(){
+            ScriptEditorWindow.openGlobal();
+        }, false);
     }
     EditModeWindow.open = function(editMode){
         var editWin = new EditModeWindow(editMode);
         document.body.appendChild(editWin.getElement());
         return editWin;
     };
+
+    /**
+     * class ScriptEditorWindow
+     */
+    function ScriptEditorWindow(){
+        var win = this;
+        var space = null;
+        var view = null;
+        var c = {};
+        Window.call(this, null, [
+            HTML.div(null, [
+                c.selectTemplate = HTML.select(ScriptEditorWindow.TEMPLATES.map(function(t){return t.title;})),
+                c.loadTemplate = HTML.button("Load"),
+            ]),
+            c.code = HTML.textarea("", {rows:10, cols:50}),
+            HTML.div({className:"footer"}, [
+                c.run = HTML.button("Run"),
+                c.close = HTML.button("Close"),
+            ]),
+        ]);
+
+        c.close.addEventListener("click", function(){
+            win.removeFromParent();
+        }, false);
+        c.run.addEventListener("click", function(){
+            runScript(c.code.value);
+        }, false);
+        c.loadTemplate.addEventListener("click", function(){
+            c.code.value = ScriptEditorWindow.TEMPLATES[c.selectTemplate.selectedIndex].code;
+        }, false);
+
+        function runScript(code){
+            try{
+                var func = new Function("space", code);
+                func.call(this, space);
+            }
+            catch(e){
+                alert(e);
+            }
+            view.invalidateAndClear();
+        }
+
+        this.setSpaceAndView = function(s, v){
+            space = s;
+            view = v;
+        };
+    }
+    ScriptEditorWindow.globalWindow = null;
+    ScriptEditorWindow.getGlobalWindow = function(){
+        var SCRIPTEDITOR_X = CANVAS_WIDTH+20;
+        var SCRIPTEDITOR_Y = 50;
+        if(!ScriptEditorWindow.globalWindow){
+            var win = ScriptEditorWindow.globalWindow = new ScriptEditorWindow();
+            win.setPosition(SCRIPTEDITOR_X, SCRIPTEDITOR_Y);
+            win.setCaptionText("Script Editor");
+        }
+        return ScriptEditorWindow.globalWindow;
+    };
+    ScriptEditorWindow.openGlobal = function(){
+        document.body.appendChild(ScriptEditorWindow.getGlobalWindow().getElement());
+    };
+    ScriptEditorWindow.closeGlobal = function(){
+        if(ScriptEditorWindow.globalWindow){
+            ScriptEditorWindow.globalWindow.removeFromParent();
+        }
+    };
+    ScriptEditorWindow.TEMPLATES = [
+        {title: "Empty", code: ""},
+        {title: "Random Add",
+         code: "var Vector = Misohena.galaxysim.Vector;\n"+
+               "var SpaceObject = Misohena.galaxysim.SpaceObject;\n"+
+               "\n"+
+               "for(var i = 0; i < 100; ++i){\n"+
+               "  var mass = 1e20;\n"+
+               "  var radius = 1000;\n"+
+               "  var x = (2.0*Math.random()-1.0)*1e12;\n"+
+               "  var y = (2.0*Math.random()-1.0)*1e12;\n"+
+               "  var vx = (2.0*Math.random()-1.0)*10000;\n"+
+               "  var vy = (2.0*Math.random()-1.0)*10000;\n"+
+               "\n"+
+               "  space.addObject(new SpaceObject(mass, radius, Vector.newXY(x, y), Vector.newXY(vx, vy)));\n"+
+               "}\n"
+        },
+    ];
     
     
     var MODES = [ViewMode, EditMode];
@@ -1463,6 +1550,9 @@
 
             changeMode(0);
             modeSelect.selectedIndex = 0;
+
+            ///@todo EditModeに入ったときに設定すべきかも。しかし、EditModeを終わっても開きっぱなしにできるので、ここで設定する必要がある。EditModeを終わっても開きっぱなしにできるのは、書いたコードを失いにくくするため。理想を言えばアプリケーションのspace属性の変更を監視してScriptEditorWindowが自動的に設定を変えるべき。
+            ScriptEditorWindow.getGlobalWindow().setSpaceAndView(space, view);
         }
 
         initSpace(PRESET_INITIAL_STATES[0]);
