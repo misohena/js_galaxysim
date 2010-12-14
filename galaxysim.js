@@ -5,7 +5,6 @@
 // require Space.js
 
 // TODO: 同じ座標の物体が複数あると、ツリーの構築が終わらない問題を解決する。
-// TODO: プリセット空間に空の空間を追加する。
 // TODO: 現在の状態をテキストに出力できるようにする。
 // TODO: jsonテキストから状態を復元できるようにする。
 // TODO: 現在の状態をクッキーに出力できるようにする。
@@ -374,6 +373,7 @@
             }
             return space;
         }},
+        {title:"Empty", factory:function(){return new Space();}},
     ];
 
 
