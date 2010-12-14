@@ -5,6 +5,7 @@
 // require Space.js
 // require SpaceView.js
 
+// TODO: SpaceTreeNodeのアロケータを作り効率化する。
 // TODO: 同じ座標の物体が複数あると、ツリーの構築が終わらない問題を解決する。
 // TODO: 現在の状態をテキストに出力できるようにする。
 // TODO: jsonテキストから状態を復元できるようにする。
@@ -1221,7 +1222,7 @@
 
         // initialize
         var initSpace = this.initSpace = function(state){
-            changeMode(-1);// close current mode.
+            changeMode(-1);// close current mode. some modes depend on space object. 
             
             space = state.factory();
             conductor.setSpace(space);
