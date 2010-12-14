@@ -283,12 +283,16 @@
         
         this.theta = DEFAULT_THETA;
         this.theta2 = this.theta*this.theta;
+
+        this.collisionEnabled = true;
     };
     Space.prototype = {
         getEpsilon: function() { return this.eps;},
         setEpsilon: function(v) { if(isFinite(v)){this.eps = v; this.eps2 = v*v;}},
         getTheta: function() { return this.theta;},
         setTheta: function(v) { if(isFinite(v)){this.theta = v; this.theta2 = v*v;}},
+        getCollisionEnabled: function() { return this.collisionEnabled;},
+        setCollisionEnabled: function(b) { this.collisionEnabled = !!b;},
         addObject: function(o) { this.objects.push(o);},
         removeObject: function(o) {
             var index = this.objects.indexOf(o);
@@ -298,7 +302,7 @@
             }
         },
         step: function(dt) {
-            stepObjects(dt, this.objects, this.eps2, this.theta2);
+            stepObjects(dt, this.objects, this.eps2, this.theta2, this.collisionEnabled);
             removeDestroyed(this.objects);
             this.time += dt;
             
@@ -385,7 +389,7 @@
 
     // 全ての物体について、他の全ての物体との引力を積算します。
     // 四分木を使用します。
-    function accumulateGravityByTree(dt, objects, eps2, theta2)
+    function accumulateGravityByTree(dt, objects, eps2, theta2, collisionEnabled)
     {
         if(objects.length <= 0){
             return;
@@ -396,7 +400,6 @@
         rootNode.updateCenterOfGravity();
         //console.log("nodes="+rootNode.countNodes());
 
-        var maxRadius = 0;
         for(var i = 0; i < objects.length; ++i){
             // accumulate gravity.
             var obj = objects[i];
@@ -407,30 +410,34 @@
             obj.phi = obj.mass / Math.sqrt(eps2);
             rootNode.accumulateGravityToObject(obj, eps2, theta2);
             Vector.mul(G, obj.acceleration,  obj.acceleration); //ここでGを掛けた方が実行効率はよいが、invR3〜のところで掛けた方がaccelerationの意味(単位)が明確かもしれない。
-            // find maximum object radius used for collision detection.
-            if(maxRadius > obj.radius){
-                maxRadius = obj.radius;
-            }
         }
             
         // detect collision
-        for(var i = 0; i < objects.length; ++i){
-            var obj = objects[i];
-            if(obj.isDestroyed()){
-                continue;
+        if(collisionEnabled){
+            var maxRadius = 0;
+            for(var i = 0; i < objects.length; ++i){
+                if(maxRadius > obj.radius){
+                    maxRadius = obj.radius;
+                }
             }
-            rootNode.findObjectInSquare(
-                obj.position, obj.radius + maxRadius,
-                function(o2){
-                    if(!o2.isDestroyed() && o2 !== obj){
-                        var sumRadius = o2.radius + obj.radius;
-                        if(Vector.distanceSq(o2.position, obj.position) <= sumRadius*sumRadius){
-                            //console.log("collided");
-                            obj.merge(o2);
-                            o2.destroy();
+            for(var i = 0; i < objects.length; ++i){
+                var obj = objects[i];
+                if(obj.isDestroyed()){
+                    continue;
+                }
+                rootNode.findObjectInSquare(
+                    obj.position, obj.radius + maxRadius,
+                    function(o2){
+                        if(!o2.isDestroyed() && o2 !== obj){
+                            var sumRadius = o2.radius + obj.radius;
+                            if(Vector.distanceSq(o2.position, obj.position) <= sumRadius*sumRadius){
+                                //console.log("collided");
+                                obj.merge(o2);
+                                o2.destroy();
+                            }
                         }
-                    }
-                });
+                    });
+            }
         }
     }
 
@@ -466,12 +473,12 @@
     }
 
     // 全ての物体について、時間を進めます。
-    function stepObjects(dt, objects, eps2, theta2)
+    function stepObjects(dt, objects, eps2, theta2, collisionEnabled)
     {
         for(var i = 0; i < objects.length; ++i){
             objects[i].predict(dt);
         }
-        accumulateGravityByTree(dt, objects, eps2, theta2);
+        accumulateGravityByTree(dt, objects, eps2, theta2, collisionEnabled);
         //accumulateGravity(dt, objects, eps2);
         for(var i = 0; i < objects.length; ++i){
             objects[i].correct(dt);

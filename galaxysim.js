@@ -9,7 +9,6 @@
 // TODO: jsonテキストから状態を復元できるようにする。
 // TODO: 現在の状態をクッキーに出力できるようにする。
 // TODO: View下のコントロールを枠で囲む。
-// TODO: 衝突判定の有無を切り替えられるようにする。
 // TODO: jsファイルを分割する。シミュレーションのコア部分をspace.jsへ。プリセット状態はpresets.jsへ。
 // TODO: EditModeでも物体の追跡ができるようにする。ObjectPropertyWindowに追跡ボタンをつける。というか、ObjectPropertyWindowはObjectEditWindowまたはObjectWindowに改名すべき？　追跡中は速度ベクトルドラッグ時に、追跡対象物体に対する相対速度計算が必要になるので注意。
 // TODO: index.htmlを書く。
@@ -1490,6 +1489,9 @@
             HTML.br(),
             "theta:",
             c.thetaTextbox = HTML.textbox(""),
+            HTML.br(),
+            c.collisionCheckbox = HTML.checkbox(),
+            "Collision"
         ]);
         document.body.appendChild(controlDiv);
 
@@ -1518,11 +1520,15 @@
         c.thetaTextbox.addEventListener("change", function(e){
             conductor.getSpace().setTheta(parseFloat(e.target.value));
         }, false);
+        c.collisionCheckbox.addEventListener("click", function(e){
+            conductor.getSpace().setCollisionEnabled(e.target.checked);
+        }, false);
 
-        function updateTextbox(){
+        function updateSpaceAttributeElements(){
             c.timesliceTextbox.value = conductor.getTimeSlice();
             c.epsilonTextbox.value = conductor.getSpace().getEpsilon().toExponential();
             c.thetaTextbox.value = conductor.getSpace().getTheta();
+            c.collisionCheckbox.checked = conductor.getSpace().getCollisionEnabled();
         }
 
         function initSpace(state){
@@ -1537,7 +1543,7 @@
             view.setCenterXY(
                 state.viewX || DEFAULT_VIEW_X,
                 state.viewY || DEFAULT_VIEW_Y);
-            updateTextbox();
+            updateSpaceAttributeElements();
 
             changeMode(0);
             c.modeSelect.selectedIndex = 0;
