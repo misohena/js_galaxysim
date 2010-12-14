@@ -1332,15 +1332,14 @@
      * class EditModeWindow
      */
     function EditModeWindow(editMode) {
-        var buttonAddObject;
-        var buttonScript;
+        var c = {};
         Window.call(this, null, [
-            buttonAddObject = HTML.button("Add Object"),
-            buttonScript = HTML.button("Script"),
+            c.buttonAddObject = HTML.button("Add Object"),
+            c.buttonScript = HTML.button("Script"),
         ]);
         this.setCaptionText("Edit Mode");
 
-        buttonAddObject.addEventListener("click", function(){
+        c.buttonAddObject.addEventListener("click", function(){
             // add new object to space
             var newpos = editMode.getView().getCenter();
             var newobj = new SpaceObject(
@@ -1351,7 +1350,7 @@
             editMode.openObjectPropertyWindow(newobj);
         }, false);
 
-        buttonScript.addEventListener("click", function(){
+        c.buttonScript.addEventListener("click", function(){
             ScriptEditorWindow.openGlobal();
         }, false);
     }
@@ -1470,68 +1469,60 @@
         }
         
         // create a control.
-        var initStateSelect;
-        var initButton;
-        var startButton;
-        var visibleAxisCheckbox;
-        var enabledBlurCheckbox;
-        var modeSelect;
-        var timesliceTextbox;
-        var epsilonTextbox;
-        var thetaTextbox;
+        var c = {};
         var controlDiv = HTML.div({}, [
-            initStateSelect = HTML.select(PRESET_INITIAL_STATES.map(function(s) { return s.title;})),
-            initButton = HTML.button("Init"),
-            startButton = HTML.button("Start/Stop"),
-            visibleAxisCheckbox = HTML.checkbox(view.getVisibleAxis()),
+            c.initStateSelect = HTML.select(PRESET_INITIAL_STATES.map(function(s) { return s.title;})),
+            c.initButton = HTML.button("Init"),
+            c.startButton = HTML.button("Start/Stop"),
+            c.visibleAxisCheckbox = HTML.checkbox(view.getVisibleAxis()),
             "Axis",
-            enabledBlurCheckbox = HTML.checkbox(view.getEnabledBlur()),
+            c.enabledBlurCheckbox = HTML.checkbox(view.getEnabledBlur()),
             "Blur",
-            modeSelect = HTML.select(MODES.map(function(item){return item.title;})),
+            c.modeSelect = HTML.select(MODES.map(function(item){return item.title;})),
             HTML.br(),
             "time slice:",
-            timesliceTextbox = HTML.textbox(""),
+            c.timesliceTextbox = HTML.textbox(""),
             "second",
             HTML.br(),
             "epsilon:",
-            epsilonTextbox = HTML.textbox(""),
+            c.epsilonTextbox = HTML.textbox(""),
             "meter (potential=G*m/sqrt(r^2+epsilon^2))",
             HTML.br(),
             "theta:",
-            thetaTextbox = HTML.textbox(""),
+            c.thetaTextbox = HTML.textbox(""),
         ]);
         document.body.appendChild(controlDiv);
 
-        initButton.addEventListener("click", function(e){
+        c.initButton.addEventListener("click", function(e){
             conductor.stop();
-            initSpace(PRESET_INITIAL_STATES[initStateSelect.selectedIndex]);
+            initSpace(PRESET_INITIAL_STATES[c.initStateSelect.selectedIndex]);
         }, false);
-        startButton.addEventListener("click", function(e){
+        c.startButton.addEventListener("click", function(e){
             conductor.toggleStartStop();
         }, false);
-        visibleAxisCheckbox.addEventListener("change", function(e){
+        c.visibleAxisCheckbox.addEventListener("change", function(e){
             view.setVisibleAxis(!view.getVisibleAxis());
         }, false);
-        enabledBlurCheckbox.addEventListener("change", function(e){
+        c.enabledBlurCheckbox.addEventListener("change", function(e){
             view.setEnabledBlur(!view.getEnabledBlur());
         }, false);
-        modeSelect.addEventListener("change", function(e){
+        c.modeSelect.addEventListener("change", function(e){
             changeMode(e.target.selectedIndex);
         }, false);
-        timesliceTextbox.addEventListener("change", function(e){
+        c.timesliceTextbox.addEventListener("change", function(e){
             conductor.setTimeSlice(parseFloat(e.target.value));
         }, false);
-        epsilonTextbox.addEventListener("change", function(e){
+        c.epsilonTextbox.addEventListener("change", function(e){
             conductor.getSpace().setEpsilon(parseFloat(e.target.value));
         }, false);
-        thetaTextbox.addEventListener("change", function(e){
+        c.thetaTextbox.addEventListener("change", function(e){
             conductor.getSpace().setTheta(parseFloat(e.target.value));
         }, false);
 
         function updateTextbox(){
-            timesliceTextbox.value = conductor.getTimeSlice();
-            epsilonTextbox.value = conductor.getSpace().getEpsilon().toExponential();
-            thetaTextbox.value = conductor.getSpace().getTheta();
+            c.timesliceTextbox.value = conductor.getTimeSlice();
+            c.epsilonTextbox.value = conductor.getSpace().getEpsilon().toExponential();
+            c.thetaTextbox.value = conductor.getSpace().getTheta();
         }
 
         function initSpace(state){
@@ -1549,7 +1540,7 @@
             updateTextbox();
 
             changeMode(0);
-            modeSelect.selectedIndex = 0;
+            c.modeSelect.selectedIndex = 0;
 
             ///@todo EditModeに入ったときに設定すべきかも。しかし、EditModeを終わっても開きっぱなしにできるので、ここで設定する必要がある。EditModeを終わっても開きっぱなしにできるのは、書いたコードを失いにくくするため。理想を言えばアプリケーションのspace属性の変更を監視してScriptEditorWindowが自動的に設定を変えるべき。
             ScriptEditorWindow.getGlobalWindow().setSpaceAndView(space, view);
