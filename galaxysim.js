@@ -1115,37 +1115,19 @@
     
     
     var MODES = [ViewMode, EditMode];
-    
 
-    function main() {
-        var conductor = new Conductor();
-        
-        // create a canvas.
-        var view = new SpaceView(CANVAS_WIDTH, CANVAS_HEIGHT);
-        var cv = view.getCanvas();
-        document.body.appendChild(cv);
-
-        // mode.
-        var currentMode = null;
-        function changeMode(modeIndex){
-            if(currentMode){
-                currentMode.close();
-                currentMode = null;
-            }
-            if(modeIndex >= 0 && modeIndex < MODES.length){
-                currentMode = new (MODES[modeIndex])(view.getSpace(), conductor, view);
-            }
-        }
-        
-        // create a control.
+    /**
+     * class AppControlPanel
+     */
+    function AppControlPanel(app) {
         var c = {};
         var controlDiv = HTML.div({}, [
             c.initStateSelect = HTML.select(PRESET_INITIAL_STATES.map(function(s) { return s.title;})),
             c.initButton = HTML.button("Init"),
             c.startButton = HTML.button("Start/Stop"),
-            c.visibleAxisCheckbox = HTML.checkbox(view.getVisibleAxis()),
+            c.visibleAxisCheckbox = HTML.checkbox(app.getView().getVisibleAxis()),
             "Axis",
-            c.enabledBlurCheckbox = HTML.checkbox(view.getEnabledBlur()),
+            c.enabledBlurCheckbox = HTML.checkbox(app.getView().getEnabledBlur()),
             "Blur",
             c.modeSelect = HTML.select(MODES.map(function(item){return item.title;})),
             HTML.br(),
@@ -1163,69 +1145,114 @@
             c.collisionCheckbox = HTML.checkbox(),
             "Collision"
         ]);
-        document.body.appendChild(controlDiv);
+        this.getElement = function() { return controlDiv;};
 
         c.initButton.addEventListener("click", function(e){
-            conductor.stop();
-            initSpace(PRESET_INITIAL_STATES[c.initStateSelect.selectedIndex]);
+            app.getConductor().stop();
+            app.initSpace(PRESET_INITIAL_STATES[c.initStateSelect.selectedIndex]);
         }, false);
         c.startButton.addEventListener("click", function(e){
-            conductor.toggleStartStop();
+            app.getConductor().toggleStartStop();
         }, false);
         c.visibleAxisCheckbox.addEventListener("change", function(e){
-            view.setVisibleAxis(!view.getVisibleAxis());
+            app.getView().setVisibleAxis(!app.getView().getVisibleAxis());
         }, false);
         c.enabledBlurCheckbox.addEventListener("change", function(e){
-            view.setEnabledBlur(!view.getEnabledBlur());
+            app.getView().setEnabledBlur(!app.getView().getEnabledBlur());
         }, false);
         c.modeSelect.addEventListener("change", function(e){
-            changeMode(e.target.selectedIndex);
+            app.changeMode(e.target.selectedIndex);
         }, false);
         c.timesliceTextbox.addEventListener("change", function(e){
-            conductor.setTimeSlice(parseFloat(e.target.value));
+            app.getConductor().setTimeSlice(parseFloat(e.target.value));
         }, false);
         c.epsilonTextbox.addEventListener("change", function(e){
-            conductor.getSpace().setEpsilon(parseFloat(e.target.value));
+            app.getSpace().setEpsilon(parseFloat(e.target.value));
         }, false);
         c.thetaTextbox.addEventListener("change", function(e){
-            conductor.getSpace().setTheta(parseFloat(e.target.value));
+            app.getSpace().setTheta(parseFloat(e.target.value));
         }, false);
         c.collisionCheckbox.addEventListener("click", function(e){
-            conductor.getSpace().setCollisionEnabled(e.target.checked);
+            app.getSpace().setCollisionEnabled(e.target.checked);
         }, false);
 
-        function updateSpaceAttributeElements(){
-            c.timesliceTextbox.value = conductor.getTimeSlice();
-            c.epsilonTextbox.value = conductor.getSpace().getEpsilon().toExponential();
-            c.thetaTextbox.value = conductor.getSpace().getTheta();
-            c.collisionCheckbox.checked = conductor.getSpace().getCollisionEnabled();
+        this.updateControls = function(){
+            c.timesliceTextbox.value = app.getConductor().getTimeSlice();
+            c.epsilonTextbox.value = app.getSpace().getEpsilon().toExponential();
+            c.thetaTextbox.value = app.getSpace().getTheta();
+            c.collisionCheckbox.checked = app.getSpace().getCollisionEnabled();
         }
+        this.selectMode = function(index){
+            c.modeSelect.selectedIndex = index;
+        }
+    }
+    
+    /**
+     * class App
+     */
+    function App() {
+        // space
+        var space = null;
+        this.getSpace = function() { return space;};
+        
+        // conductor
+        var conductor = new Conductor();
+        this.getConductor = function() { return conductor;};
 
-        function initSpace(state){
+        // view
+        var view = new SpaceView(CANVAS_WIDTH, CANVAS_HEIGHT);
+        this.getView = function() { return view;};
+        document.body.appendChild(view.getCanvas());
+
+        // mode
+        var currentMode = null;
+        var changeMode = this.changeMode = function(modeIndex){
+            if(currentMode){
+                currentMode.close();
+                currentMode = null;
+            }
+            if(modeIndex >= 0 && modeIndex < MODES.length){
+                currentMode = new (MODES[modeIndex])(view.getSpace(), conductor, view);
+            }
+        };
+
+        // control panel
+        var controlPanel = new AppControlPanel(this); //assert(view && conductor)
+        document.body.appendChild(controlPanel.getElement());
+
+        // initialize
+        var initSpace = this.initSpace = function(state){
             changeMode(-1);// close current mode.
             
-            var space = state.factory();
+            space = state.factory();
             conductor.setSpace(space);
             conductor.setTimeSlice(state.dt || DEFAULT_DT);
             view.setSpace(space);
             view.setScale(
-                (state.scale !== undefined) ? 0.5*Math.min(cv.width, cv.height)*state.scale : DEFAULT_VIEW_SCALE);
+                (state.scale !== undefined) ? 0.5*Math.min(view.getCanvas().width, view.getCanvas().height)*state.scale : DEFAULT_VIEW_SCALE);
             view.setCenterXY(
                 state.viewX || DEFAULT_VIEW_X,
                 state.viewY || DEFAULT_VIEW_Y);
-            updateSpaceAttributeElements();
+            
+            controlPanel.updateControls();
+            controlPanel.selectMode(0); // call changeMode(0);
 
-            changeMode(0);
-            c.modeSelect.selectedIndex = 0;
 
-            ///@todo EditModeに入ったときに設定すべきかも。しかし、EditModeを終わっても開きっぱなしにできるので、ここで設定する必要がある。EditModeを終わっても開きっぱなしにできるのは、書いたコードを失いにくくするため。理想を言えばアプリケーションのspace属性の変更を監視してScriptEditorWindowが自動的に設定を変えるべき。
+            ///@todo EditModeに入ったときに設定すべきかも。しかし、EditModeを終わっても開きっぱなしにできるので、ここで設定する必要がある。EditModeを終わっても開きっぱなしにできるのは、書いたコードを失いにくくするため。理想を言えばアプリケーションのspace属性の変更を監視してScriptEditorWindowが自動的に設定を変えるべき。ただ、これだけのためにイベント通知機構を追加するのもね。
             ScriptEditorWindow.getGlobalWindow().setSpaceAndView(space, view);
         }
 
         initSpace(PRESET_INITIAL_STATES[0]);
     }
-    
-    thispkg.App = {
-        main: main
+
+
+    /**
+     * function main
+     */
+    thispkg.main = function() {
+        if(!thispkg.app){
+            thispkg.app = new App();
+        }
     };
+    
 })();
