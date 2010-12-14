@@ -707,22 +707,29 @@
         function onMerged(e){
             changeTrackingTarget(e.mergeTarget);
         }
+        function onRemove(e){
+            changeTrackingTarget(null);
+        }
         function changeTrackingTarget(newTarget){
             if(trackingTarget){
                 trackingTarget.removeEventListener("merged", onMerged);
+                trackingTarget.removeEventListener("removefromspace", onRemove);
             }
             trackingTarget = newTarget;
             if(trackingTarget){
                 trackingTarget.addEventListener("merged", onMerged);
+                trackingTarget.addEventListener("removefromspace", onRemove);
             }
         }
         changeTrackingTarget(obj);
 
         // scroll view at each step.
         function trackTarget(){
-            view.setCenterXYWithoutClear(
-                Vector.getX(trackingTarget.position),
-                Vector.getY(trackingTarget.position));
+            if(trackingTarget){
+                view.setCenterXYWithoutClear(
+                    Vector.getX(trackingTarget.position),
+                    Vector.getY(trackingTarget.position));
+            }
         }
         space.addEventListener("step", trackTarget);
 
