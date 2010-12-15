@@ -8,8 +8,6 @@
 // TODO: スクリプトテンプレートを充実させる。
 // TODO: 同じ座標の物体が複数あると、ツリーの構築が終わらない問題を解決する。
 
-// TODO: 現在の状態をテキストに出力できるようにする。
-// TODO: jsonテキストから状態を復元できるようにする。
 // TODO: 現在の状態をクッキーに出力できるようにする。
 
 // TODO: View下のコントロールを枠で囲む。
@@ -720,6 +718,7 @@
         this.setTrackingTarget = setTrackingTarget;
         this.getSpace = function(){ return space;};
         this.getView = function(){ return view;};
+        this.getConductor = function(){ return conductor;};
         this.close = function(){
             setTrackingTarget(null); //release object tracker.
             releaseCurrentEditTarget();
@@ -998,6 +997,8 @@
         Window.call(this, null, [
             c.buttonAddObject = HTML.button("Add Object"),
             c.buttonScript = HTML.button("Script"),
+            c.buttonSaveStateToJSON = HTML.button("Save State to JSON"),
+            c.buttonLoadStateFromJSON = HTML.button("Load State from JSON"),
         ]);
         this.setCaptionText("Edit Mode");
 
@@ -1014,6 +1015,54 @@
 
         c.buttonScript.addEventListener("click", function(){
             ScriptEditorWindow.openGlobal();
+        }, false);
+
+        c.buttonSaveStateToJSON.addEventListener("click", function(e){
+            var data = JSON.stringify({
+                space: editMode.getSpace().getState(),
+                dt: editMode.getConductor().getTimeSlice()
+            });
+
+            var lc = {};
+            var lwin = new Window(null, [
+                lc.data = HTML.textarea(data, {rows:3, cols:40}),
+                HTML.div({className:"footer"}, [
+                    lc.cancel = HTML.button("Close"),
+                ]),
+            ]);
+            lwin.setCaptionText("Save State to JSON");
+            var lwinpos = getElementAbsPos(e.target);
+            lwin.setPosition(Vector2D.getX(lwinpos), Vector2D.getY(lwinpos));
+            document.body.appendChild(lwin.getElement());
+            lc.cancel.addEventListener("click", function(){
+                lwin.removeFromParent();
+            }, false);
+        }, false);
+
+        c.buttonLoadStateFromJSON.addEventListener("click", function(){
+            var lc = {};
+            var lwin = new Window(null, [
+                lc.data = HTML.textarea("", {rows:3, cols:40}),
+                HTML.div({className:"footer"}, [
+                    lc.load = HTML.button("Load"),
+                    lc.cancel = HTML.button("Cancel"),
+                ]),
+            ]);
+            lwin.setCaptionText("Load State from JSON");
+            var lwinpos = getElementAbsPos(c.buttonLoadStateFromJSON);
+            lwin.setPosition(Vector2D.getX(lwinpos), Vector2D.getY(lwinpos));
+            document.body.appendChild(lwin.getElement());
+            lc.load.addEventListener("click", function(){
+                try{
+                    thispkg.app.initSpace(JSON.parse(lc.data.value));
+                }
+                catch(e){
+                    alert(e);
+                }
+            }, false);
+            lc.cancel.addEventListener("click", function(){
+                lwin.removeFromParent();
+            }, false);
         }, false);
     }
     EditModeWindow.open = function(editMode){
@@ -1247,8 +1296,14 @@
         // initialize
         var initSpace = this.initSpace = function(state){
             changeMode(-1);// close current mode. some modes depend on space object. 
-            
-            space = state.factory();
+
+            if(state.space){
+                space = new Space();
+                space.setState(state.space);
+            }
+            else{
+                space = state.factory();
+            }
             conductor.setSpace(space);
             conductor.setTimeSlice(state.dt || DEFAULT_DT);
             view.setSpace(space);

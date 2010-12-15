@@ -85,6 +85,14 @@
         getId: function(){
             return this.id;
         },
+        getState: function(){
+            return {
+                mass: this.mass,
+                radius: this.radius,
+                pos: this.position,
+                vel: this.velocity,
+            };
+        },
         destroy: function(){
             this.mass = 0;
             this.radius = 0;
@@ -319,6 +327,25 @@
         this.collisionEnabled = true;
     };
     Space.prototype = {
+        getState: function(){
+            return {
+                time: this.time,
+                objects: this.objects.map(function(o){return o.getState();}),
+                eps: this.eps,
+                theta: this.theta,
+                collisionEnabled: this.collisionEnabled,
+            };
+        },
+        setState: function(state){
+            //ignore state.time
+            this.setEpsilon(state.eps);
+            this.setTheta(state.theta);
+            this.setCollisionEnabled(state.collisionEnabled);
+            for(var oi = 0; oi < state.objects.length; ++oi){
+                var o = state.objects[oi];
+                this.addObject(new SpaceObject(o.mass, o.radius, o.pos, o.vel));
+            }
+        },
         getEpsilon: function() { return this.eps;},
         setEpsilon: function(v) { if(isFinite(v)){this.eps = v; this.eps2 = v*v;}},
         getTheta: function() { return this.theta;},
