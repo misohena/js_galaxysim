@@ -6,13 +6,13 @@
 // require SpaceView.js
 
 // TODO: スクリプトテンプレートを充実させる。
-// TODO: SpaceTreeNodeのアロケータを作り効率化する。
 // TODO: 同じ座標の物体が複数あると、ツリーの構築が終わらない問題を解決する。
+
 // TODO: 現在の状態をテキストに出力できるようにする。
 // TODO: jsonテキストから状態を復元できるようにする。
 // TODO: 現在の状態をクッキーに出力できるようにする。
+
 // TODO: View下のコントロールを枠で囲む。
-// TODO: jsファイルを分割する。シミュレーションのコア部分をspace.jsへ。プリセット状態はpresets.jsへ。
 // TODO: EditModeでも物体の追跡ができるようにする。ObjectPropertyWindowに追跡ボタンをつける。というか、ObjectPropertyWindowはObjectEditWindowまたはObjectWindowに改名すべき？　追跡中は速度ベクトルドラッグ時に、追跡対象物体に対する相対速度計算が必要になるので注意。
 // TODO: index.htmlを書く。
 // TODO: 公開する。
@@ -359,6 +359,22 @@
             }
             return space;
         }},
+        {title:"Galaxy", factory:function(){
+            var space = new Space();
+            space.setCollisionEnabled(false);
+            for(var i = 0; i < 1000; ++i){
+                var radius = 1e6 + 1e8*Math.random();
+                var density = 100 + 2000*Math.random();
+                var mass = Math.PI*4/3*(radius*radius*radius) * density;
+                var pos = Vector.randomInCircle(1e10);
+                var dist = Vector.length(pos);
+                var speed = dist/50000;
+                var dir = Vector.rot90(Vector.mul(1/dist, pos));
+                var vel = Vector.mul(speed, dir);
+                space.addObject(new SpaceObject(mass, radius, pos, vel));
+            }
+            return space;
+        }, viewBlur:false, scale:2e-11, dt:1800},
         {title:"Empty", factory:function(){return new Space();}},
     ];
 
