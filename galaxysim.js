@@ -1190,6 +1190,7 @@
         }, false);
 
         this.updateControls = function(){
+            c.enabledBlurCheckbox.checked = app.getView().getEnabledBlur();
             c.timesliceTextbox.value = app.getConductor().getTimeSlice();
             c.epsilonTextbox.value = app.getSpace().getEpsilon().toExponential();
             c.thetaTextbox.value = app.getSpace().getTheta();
@@ -1246,6 +1247,7 @@
             view.setCenterXY(
                 state.viewX || DEFAULT_VIEW_X,
                 state.viewY || DEFAULT_VIEW_Y);
+            view.setEnabledBlur(state.viewBlur === undefined ? true : state.viewBlur);
             
             controlPanel.updateControls();
             controlPanel.selectMode(0); // if selectedIndex!=0 then call changeMode(0);
