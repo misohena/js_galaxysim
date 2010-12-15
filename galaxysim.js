@@ -244,17 +244,6 @@
     // Preset Initial States
     //
 
-    function randomPositionInCircle()
-    {
-        for(;;){
-            var x = 2.0*Math.random() - 1.0;
-            var y = 2.0*Math.random() - 1.0;
-            if(x*x+y*y < 1){
-                return Vector.newXY(x, y);
-            }
-        }
-    }
-
     var PRESET_INITIAL_STATES = [
         // Title, SpaceFactory, ViewScale, ViewX, ViewY
         {title:"Pseudo-Solar System", factory:function(){
@@ -312,50 +301,37 @@
             return space;
         }},
         {title:"Random 100", factory:function(){
-            function createObjectRandom()
-            {
+            var space = new Space();
+            for(var i = 0; i < 100; ++i){
                 //var radius = 1e4 + Math.random() * 6.96e8;
                 //var mass = radius*radius*radius*1e3;
                 //var radius = 1e4 + Math.random() * 7e7;
                 var radius = 7e7;
                 var mass = radius*radius*radius*5536;
-                var pos = randomPositionInCircle();
-                Vector.mul(8.0e10, pos, pos);
+                var pos = Vector.randomInCircle(8e10);
                 var vx = 0;//Math.random()*29780*(Math.random()<0.5 ? 1 : -1);
                 var vy = 0;//Math.random()*29780*(Math.random()<0.5 ? 1 : -1);
-                return new SpaceObject(
-                    mass, radius,
-                    pos,
-                    Vector.newXY(vx, vy)
-                );
-            }
-            var space = new Space();
-            for(var i = 0; i < 100; ++i){
-                space.addObject(createObjectRandom());
+                space.addObject(new SpaceObject(mass, radius, pos,
+                                                Vector.newXY(vx, vy)));
             }
             return space;
         }},
         {title:"Random 1000", factory:function(){
-            function createObjectRandom()
-            {
+            var space = new Space();
+            for(var i = 0; i < 1000; ++i){
                 //var radius = 1e4 + Math.random() * 6.96e8;
                 //var mass = radius*radius*radius*1e3;
                 //var radius = 1e4 + Math.random() * 7e7;
                 var radius = 7e7;
                 var mass = radius*radius*radius*5536;
-                var pos = randomPositionInCircle();
-                Vector.mul(8.0e10, pos, pos);
+                var pos = Vector.randomInCircle(8e10);
                 var vx = 0;//Math.random()*29780*(Math.random()<0.5 ? 1 : -1);
                 var vy = 0;//Math.random()*29780*(Math.random()<0.5 ? 1 : -1);
-                return new SpaceObject(
+                space.addObject(new SpaceObject(
                     mass, radius,
                     pos,
                     Vector.newXY(vx, vy)
-                );
-            }
-            var space = new Space();
-            for(var i = 0; i < 1000; ++i){
-                space.addObject(createObjectRandom());
+                ));
             }
             return space;
         }},
