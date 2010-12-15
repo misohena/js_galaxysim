@@ -242,6 +242,36 @@
                 }
             }
         },
+        accumulateGravityToObject_Fast2D: function(obj, eps2, theta2)
+        {
+            // accumulateGravityToObjectの高速化版。
+            // 再帰呼び出しをやめてVector.*を使わないようにした。
+            var nodes = [this];
+            while(nodes.length){
+                var currNode = nodes.pop();
+
+                var vx = currNode.gravityCenter[0] - obj.position[0];
+                var vy = currNode.gravityCenter[1] - obj.position[1];
+                var r2 = vx*vx + vy*vy;
+                if(currNode.countObj == 1 || r2*theta2 > currNode.size*currNode.size){
+                    var invR2 = 1 / (r2 + eps2);
+                    var invR = Math.sqrt(invR2);
+                    var invR3 = invR2 * invR;
+                    obj.phi -= currNode.gravityMass * invR;
+                    var f = currNode.gravityMass*invR3;
+                    obj.acceleration[0] = obj.acceleration[0] + f * vx;
+                    obj.acceleration[1] = obj.acceleration[1] + f * vy;
+                }
+                else{
+                    for(var i = 0; i < 4; ++i){
+                        var snode = currNode.subnodes[i];
+                        if(snode){
+                            nodes.push(snode);
+                        }
+                    }
+                }
+            }
+        },
         countNodes: function()
         {
             var count = 1;
@@ -408,7 +438,8 @@
             }
             Vector.setZero(obj.acceleration);
             obj.phi = obj.mass / Math.sqrt(eps2);
-            rootNode.accumulateGravityToObject(obj, eps2, theta2);
+            //rootNode.accumulateGravityToObject(obj, eps2, theta2);
+            rootNode.accumulateGravityToObject_Fast2D(obj, eps2, theta2);
             Vector.mul(G, obj.acceleration,  obj.acceleration); //ここでGを掛けた方が実行効率はよいが、invR3〜のところで掛けた方がaccelerationの意味(単位)が明確かもしれない。
         }
             
