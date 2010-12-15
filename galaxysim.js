@@ -1116,6 +1116,24 @@
          "// Pluto   1.3105e22   1153000 2000\n"+
          "// Moon    7.35e22     1737100 3346.4\n"
         },
+        {title: "Random Add With Rotation",
+         code:
+         "var Vector = Misohena.galaxysim.Vector;\n"+
+         "var SpaceObject = Misohena.galaxysim.SpaceObject;\n"+
+         "\n"+
+         "for(var i = 0; i < 100; ++i){\n"+
+         "  var radius = 1e6 + 1e8*Math.random();\n"+
+         "  var density = 700 + 5000*Math.random();\n"+
+         "  var mass = Math.PI*4/3*(radius*radius*radius) * density;\n"+
+         "  var pos = Vector.randomInCircle(1e11);\n"+
+         "  var dist = Vector.length(pos);\n"+
+         "  var speed = dist*0.0000004;\n"+
+         "  var dir = Vector.rot90(Vector.mul(1/dist, pos));\n"+
+         "  var vel = Vector.mul(speed, dir);\n"+
+         "\n"+
+         "  space.addObject(new SpaceObject(mass, radius, pos, vel));\n"+
+         "}\n"
+        },
     ];
     
     
