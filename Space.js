@@ -145,10 +145,11 @@
     /**
      * class SpaceTreeNode
      */
+    var MAX_SUBNODES = (1<<2); // 2^DIM
     var SpaceTreeNode = thispkg.SpaceTreeNode = function(nodeCenter, nodeSize){
         this.center = nodeCenter;
         this.size = nodeSize; //length of edge
-        this.subnodes = new Array(4);
+        this.subnodes = new Array(MAX_SUBNODES);
         this.firstObj = null;
         this.countObj = 0;
         this.gravityCenter = Vector.newZero();
@@ -165,7 +166,8 @@
             }
             else{
                 // divide the points into four sets.
-                var subnodeObjs = [null, null, null, null];//new Array(4);
+                var subnodeObjs = new Array(MAX_SUBNODES);
+                for(var i = 0; i < MAX_SUBNODES; ++i){subnodeObjs[i] = null;}
                 var count = 0;
                 var objNext;
                 for(var obj = firstObj; obj != null; obj = objNext, ++count){
@@ -179,7 +181,7 @@
                 this.countObj = count;
 
                 // create subnode objects.
-                for(var indexBits = 0; indexBits < 4; ++indexBits){
+                for(var indexBits = 0; indexBits < MAX_SUBNODES; ++indexBits){
                     if(subnodeObjs[indexBits]){
                         var qsize = 0.25 * this.size;
                         var snodeCenter = Vector.newXY(
@@ -200,7 +202,7 @@
             if(this.countObj > 1){
                 var gCenter = Vector.newZero();
                 var gMass = 0;
-                for(var i = 0; i < 4; ++i){
+                for(var i = 0; i < MAX_SUBNODES; ++i){
                     var snode = this.subnodes[i];
                     if(snode){
                         snode.updateCenterOfGravity();
@@ -234,7 +236,7 @@
                               obj.acceleration);
             }
             else{
-                for(var i = 0; i < 4; ++i){
+                for(var i = 0; i < MAX_SUBNODES; ++i){
                     var snode = this.subnodes[i];
                     if(snode){
                         snode.accumulateGravityToObject(obj, eps2, theta2);
@@ -263,7 +265,7 @@
                     obj.acceleration[1] = obj.acceleration[1] + f * vy;
                 }
                 else{
-                    for(var i = 0; i < 4; ++i){
+                    for(var i = 0; i < MAX_SUBNODES; ++i){
                         var snode = currNode.subnodes[i];
                         if(snode){
                             nodes.push(snode);
@@ -275,7 +277,7 @@
         countNodes: function()
         {
             var count = 1;
-            for(var i = 0; i < 4; ++i){
+            for(var i = 0; i < MAX_SUBNODES; ++i){
                 if(this.subnodes[i]){
                     count += this.subnodes[i].countNodes();
                 }
@@ -289,7 +291,7 @@
                     func(this.firstObj);
                 }
                 else if(this.countObj > 1){
-                    for(var i = 0; i < 4; ++i){
+                    for(var i = 0; i < MAX_SUBNODES; ++i){
                         if(this.subnodes[i]){
                             this.subnodes[i].findObjectInSquare(center, radius, func);
                         }
