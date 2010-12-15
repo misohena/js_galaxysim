@@ -1237,7 +1237,8 @@
                 state.viewY || DEFAULT_VIEW_Y);
             
             controlPanel.updateControls();
-            controlPanel.selectMode(0); // call changeMode(0);
+            controlPanel.selectMode(0); // if selectedIndex!=0 then call changeMode(0);
+            changeMode(0); // make sure change mode
 
 
             ///@todo EditModeに入ったときに設定すべきかも。しかし、EditModeを終わっても開きっぱなしにできるので、ここで設定する必要がある。EditModeを終わっても開きっぱなしにできるのは、書いたコードを失いにくくするため。理想を言えばアプリケーションのspace属性の変更を監視してScriptEditorWindowが自動的に設定を変えるべき。ただ、これだけのためにイベント通知機構を追加するのもね。
