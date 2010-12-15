@@ -5,7 +5,6 @@
 // require Space.js
 // require SpaceView.js
 
-// TODO: Vector.randomInSphereかなにかを作る。スクリプトテンプレートで使う。
 // TODO: スクリプトテンプレートを充実させる。
 // TODO: SpaceTreeNodeのアロケータを作り効率化する。
 // TODO: 同じ座標の物体が複数あると、ツリーの構築が終わらない問題を解決する。
@@ -1099,19 +1098,31 @@
     ScriptEditorWindow.TEMPLATES = [
         {title: "Empty", code: ""},
         {title: "Random Add",
-         code: "var Vector = Misohena.galaxysim.Vector;\n"+
-               "var SpaceObject = Misohena.galaxysim.SpaceObject;\n"+
-               "\n"+
-               "for(var i = 0; i < 100; ++i){\n"+
-               "  var mass = 1e20;\n"+
-               "  var radius = 1000;\n"+
-               "  var x = (2.0*Math.random()-1.0)*1e12;\n"+
-               "  var y = (2.0*Math.random()-1.0)*1e12;\n"+
-               "  var vx = (2.0*Math.random()-1.0)*10000;\n"+
-               "  var vy = (2.0*Math.random()-1.0)*10000;\n"+
-               "\n"+
-               "  space.addObject(new SpaceObject(mass, radius, Vector.newXY(x, y), Vector.newXY(vx, vy)));\n"+
-               "}\n"
+         code:
+         "var Vector = Misohena.galaxysim.Vector;\n"+
+         "var SpaceObject = Misohena.galaxysim.SpaceObject;\n"+
+         "\n"+
+         "for(var i = 0; i < 100; ++i){\n"+
+         "  var radius = 1e6 + 1e8*Math.random();\n"+
+         "  var density = 700 + 5000*Math.random();\n"+
+         "  var mass = Math.PI*4/3*(radius*radius*radius) * density;\n"+
+         "  var pos = Vector.randomInCircle(1e11);\n"+
+         "  var vel = Vector.randomInCircle(10000);\n"+
+         "\n"+
+         "  space.addObject(new SpaceObject(mass, radius, pos, vel));\n"+
+         "}\n"+
+         "// Name    Mass(kg)  Radius(m) Density(kg/m^3)\n"+
+         "// Sun     1.9891e30 696000000 1409\n"+
+         "// Mercury 3.302e23    2439700 5430\n"+
+         "// Venus   4.8685e24   6051800 5240\n"+
+         "// Earth   5.9736e24   6371000 5515\n"+
+         "// Mars    6.4185e23   3390000 3940\n"+
+         "// Jupiter 1.8986e27  69911000 1330\n"+
+         "// Saturn  5.6846e26  58232000  700\n"+
+         "// Uranus  8.6832e25  25362000 1300\n"+
+         "// Neptune 1.0243e26  24622000 1760\n"+
+         "// Pluto   1.3105e22   1153000 2000\n"+
+         "// Moon    7.35e22     1737100 3346.4\n"
         },
     ];
     

@@ -112,6 +112,24 @@
         // getter
         
         getX: function(v) { return v[0];},
-        getY: function(v) { return v[1];}
+        getY: function(v) { return v[1];},
+
+        // random
+        randomInCircle: function(radius, dst){
+            if(radius === undefined){ radius = 1;}
+
+            var rr = radius * Math.sqrt(Math.random());
+            var th = 2*Math.PI*Math.random();
+            var x = rr*Math.cos(th);
+            var y = rr*Math.sin(th);
+
+            if(dst){
+                dst[0] = x;
+                dst[1] = y;
+            }
+            else{
+                return [x, y];
+            }
+        },
     };
 })();
