@@ -94,6 +94,35 @@
                 return [v[0], -v[1]];
             }
         },
+        rot90: function(v, dst){
+            if(dst){
+                var vx = v[0];
+                dst[0] = -v[1];
+                dst[1] = vx;
+            }
+            else{
+                return [-v[1], v[0]];
+            }
+        },
+        rot180: function(v, dst){
+            if(dst){
+                dst[0] = -v[0];
+                dst[1] = -v[1];
+            }
+            else{
+                return [-v[0], -v[1]];
+            }
+        },
+        rot270: function(v, dst){
+            if(dst){
+                var vx = v[0];
+                dst[0] = v[1];
+                dst[1] = -vx;
+            }
+            else{
+                return [v[1], -v[0]];
+            }
+        },
         
         // unary operator (return a scalar value)
         
