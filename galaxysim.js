@@ -1059,7 +1059,7 @@
                 c.selectTemplate = HTML.select(ScriptEditorWindow.TEMPLATES.map(function(t){return t.title;})),
                 c.loadTemplate = HTML.button("Load"),
             ]),
-            c.code = HTML.textarea("", {rows:10, cols:50}),
+            c.code = HTML.textarea("", {rows:15, cols:60}),
             HTML.div({className:"footer"}, [
                 c.run = HTML.button("Run"),
                 c.close = HTML.button("Close"),
