@@ -440,8 +440,8 @@
             }
             Vector.setZero(obj.acceleration);
             obj.phi = obj.mass / Math.sqrt(eps2);
-            //rootNode.accumulateGravityToObject(obj, eps2, theta2);
-            rootNode.accumulateGravityToObject_Fast2D(obj, eps2, theta2);
+            rootNode.accumulateGravityToObject(obj, eps2, theta2);
+            //rootNode.accumulateGravityToObject_Fast2D(obj, eps2, theta2);
             Vector.mul(G, obj.acceleration,  obj.acceleration); //ここでGを掛けた方が実行効率はよいが、invR3〜のところで掛けた方がaccelerationの意味(単位)が明確かもしれない。
         }
             
