@@ -11,7 +11,7 @@
 // TODO: 現在の状態をクッキーに出力できるようにする。
 
 // TODO: View下のコントロールを枠で囲む。
-// TODO: EditModeでも物体の追跡ができるようにする。ObjectPropertyWindowに追跡ボタンをつける。というか、ObjectPropertyWindowはObjectEditWindowまたはObjectWindowに改名すべき？　追跡中は速度ベクトルドラッグ時に、追跡対象物体に対する相対速度計算が必要になるので注意。
+// TODO: 追跡中は速度ベクトルドラッグ時に、追跡対象物体に対する相対速度計算が必要になるので注意。
 // TODO: 公開する。
 
 (function(){
@@ -1022,46 +1022,17 @@
                 dt: editMode.getConductor().getTimeSlice()
             });
 
-            var lc = {};
-            var lwin = new Window(null, [
-                lc.data = HTML.textarea(data, {rows:3, cols:40}),
-                HTML.div({className:"footer"}, [
-                    lc.cancel = HTML.button("Close"),
-                ]),
-            ]);
-            lwin.setCaptionText("Save State to JSON");
-            var lwinpos = getElementAbsPos(e.target);
-            lwin.setPosition(Vector2D.getX(lwinpos), Vector2D.getY(lwinpos));
-            document.body.appendChild(lwin.getElement());
-            lc.cancel.addEventListener("click", function(){
-                lwin.removeFromParent();
-            }, false);
+            var now = new Date();
+            var swin = new SavedStateWindow(
+                "Saved State at "+now.getFullYear()+"-"+(now.getMonth()+1)+"-"+now.getDate()+" "+now.getHours()+":"+now.getMinutes()+":"+now.getSeconds(),
+                getElementAbsPos(e.target), data);
+            document.body.appendChild(swin.getElement());
         }, false);
 
-        c.buttonLoadStateFromJSON.addEventListener("click", function(){
-            var lc = {};
-            var lwin = new Window(null, [
-                lc.data = HTML.textarea("", {rows:3, cols:40}),
-                HTML.div({className:"footer"}, [
-                    lc.load = HTML.button("Load"),
-                    lc.cancel = HTML.button("Cancel"),
-                ]),
-            ]);
-            lwin.setCaptionText("Load State from JSON");
-            var lwinpos = getElementAbsPos(c.buttonLoadStateFromJSON);
-            lwin.setPosition(Vector2D.getX(lwinpos), Vector2D.getY(lwinpos));
-            document.body.appendChild(lwin.getElement());
-            lc.load.addEventListener("click", function(){
-                try{
-                    mypkg.app.initSpace(JSON.parse(lc.data.value));
-                }
-                catch(e){
-                    alert(e);
-                }
-            }, false);
-            lc.cancel.addEventListener("click", function(){
-                lwin.removeFromParent();
-            }, false);
+        c.buttonLoadStateFromJSON.addEventListener("click", function(e){
+            var swin = new SavedStateWindow(
+                "Load State from JSON", getElementAbsPos(e.target), "");
+            document.body.appendChild(swin.getElement());
         }, false);
     }
     EditModeWindow.open = function(editMode){
@@ -1070,6 +1041,37 @@
         return editWin;
     };
 
+    /**
+     * class SavedStateWindow
+     */
+    function SavedStateWindow(caption, pos, data){
+        var win = this;
+        var c = {};
+        Window.call(this, null, [
+            c.data = HTML.textarea(data, {rows:4, cols:40}),
+            HTML.div({className:"footer"}, [
+                c.load = HTML.button("Load"),
+                c.close = HTML.button("Close"),
+            ]),
+        ]);
+        win.setCaptionText(caption);
+        win.setPosition(Vector2D.getX(pos), Vector2D.getY(pos));
+        document.body.appendChild(win.getElement());
+
+        c.load.addEventListener("click", function(){
+            try{
+                mypkg.app.initSpace(JSON.parse(c.data.value));
+            }
+            catch(e){
+                alert(e);
+            }
+        }, false);
+        
+        c.close.addEventListener("click", function(){
+            win.removeFromParent();
+        }, false);
+    }
+    
     /**
      * class ScriptEditorWindow
      */
