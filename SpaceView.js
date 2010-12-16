@@ -34,6 +34,8 @@
         cv.setAttribute("width", canvasWidth);
         cv.setAttribute("height", canvasHeight);
         var ctx = cv.getContext("2d");
+        ctx.font = "13px Arial";
+        ctx.textBaseline = "bottom";
         ctx.fillRect(0, 0, cv.width, cv.height);
         this.getCanvas = function(){ return cv;};
         this.getContext2D = function(){ return ctx;};
@@ -226,9 +228,8 @@
             
             var statusText = "objects:"+space.objects.length +
                 " time:"+toElapsedTimeString(space.time);
-            ctx.fillStyle = "rgb(128,128,128)";
+            ctx.fillStyle = "#004080";
             ctx.fillRect(0, 0, ctx.measureText(statusText).width, 16);
-            ctx.font = "16px";
             ctx.fillStyle = "rgb(255,255,255)";
             ctx.fillText(statusText, 0, 16);
         },
