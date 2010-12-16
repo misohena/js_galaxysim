@@ -243,7 +243,7 @@
 
     var PRESET_INITIAL_STATES = [
         // Title, SpaceFactory, ViewScale, ViewX, ViewY
-        {title:"Pseudo-Solar System", factory:function(){
+        {title:"Pseudo Solar System", factory:function(){
             var space = new Space();
             // Sun
             space.addObject(new SpaceObject(1.9891e30, 6.96e8, Vector.newZero()));
@@ -264,7 +264,7 @@
             // Neptune
             //space.addObject(new SpaceObject(, , Vector.newOnX(), Vector.newOnY()));
             return space;
-        }, scale:5e-13},
+        }, scale:5e-13, dt:21600},
         {title:"Test Collision", factory:function(){
             var space = new Space();
             space.addObject(new SpaceObject(1e28, 6e8, Vector.newXY(-1e11, -1e11), Vector.newXY(29780, 29780)));
