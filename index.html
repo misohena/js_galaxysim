@@ -2,47 +2,47 @@
    "http://www.w3.org/TR/html4/strict.dtd">
 <html lang="ja">
   <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=Shift_JIS">
-    <title>JavaScript�d�͑��̃V�~�����[�^(2D)</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>JavaScript重力多体シミュレータ(2D)</title>
   </head>
   <body>
-    <h1>JavaScript�d�͑��̃V�~�����[�^(2D)</h1>
-    <p><a href="galaxysim.html">JavaScript�d�͑��̃V�~�����[�^(2D)</a> (�vHTML5 Canvas�A���x�I��Google Chrome����(2010-12-16���_))</p>
+    <h1>JavaScript重力多体シミュレータ(2D)</h1>
+    <p><a href="galaxysim.html">JavaScript重力多体シミュレータ(2D)</a> (要HTML5 Canvas、速度的にGoogle Chrome推奨(2010-12-16時点))</p>
     <p><a href="sample.jpg"><img src="sample_small.jpg"></a></p>
 
-    <h2>������@</h2>
+    <h2>操作方法</h2>
     <ul>
-      <li>�}�E�X�z�C�[�� : �Y�[��</li>
-      <li>�h���b�O : �X�N���[��</li>
-      <li>���̂��N���b�N : ViewMode => ���̂�ǐ�</li>
-      <li>���̂��N���b�N : EditMode => ���̂�I���A�v���p�e�B�E�B���h�E�\��</li>
-      <li>���̂��h���b�O : EditMode => ���̂��ړ�</li>
-      <li>�����h���b�O : EditMode => ���̂̑��x��ύX</li>
+      <li>マウスホイール : ズーム</li>
+      <li>ドラッグ : スクロール</li>
+      <li>物体をクリック : ViewMode => 物体を追跡</li>
+      <li>物体をクリック : EditMode => 物体を選択、プロパティウィンドウ表示</li>
+      <li>物体をドラッグ : EditMode => 物体を移動</li>
+      <li>矢印をドラッグ : EditMode => 物体の速度を変更</li>
     </ul>
 
-    <h2>�\�[�X�R�[�h</h2>
+    <h2>ソースコード</h2>
     <dl>
       <dt><a href="galaxysim.html">galaxysim.html</a></dt>
-      <dd>���C����HTML�BMisohena.galaxysim.main(galaxysim.js��)���ĂԂ����B</dd>
+      <dd>メインのHTML。Misohena.galaxysim.main(galaxysim.js内)を呼ぶだけ。</dd>
       <dt><a href="galaxysim.css">galaxysim.css</a></dt>
-      <dd>�E�B���h�E����͗��̌����ڂ��w��B</dd>
+      <dd>ウィンドウや入力欄の見た目を指定。</dd>
       <dt><a href="galaxysim.js">galaxysim.js</a></dt>
-      <dd>���UI�܂��BApp�AAppControlPanl�AViewMode�AEditMode�AScriptEditorWindow�AEditModeWindow�ASavedStateWindow�AObjectPropertyWindow�AConductor�Ƃ������N���X(�̂悤�Ȃ���)���`�BConductor��UI�ł͂Ȃ��V�~�����[�V�����̐i�s���ŁA�^�C�}�[������Space�I�u�W�F�N�g�֎��Ԑi�s�̎w�����o���B</dd>
+      <dd>主にUIまわり。App、AppControlPanl、ViewMode、EditMode、ScriptEditorWindow、EditModeWindow、SavedStateWindow、ObjectPropertyWindow、Conductorといったクラス(のようなもの)を定義。ConductorはUIではなくシミュレーションの進行役で、タイマーを持ちSpaceオブジェクトへ時間進行の指示を出す。</dd>
       <dt><a href="SpaceView.js">SpaceView.js</a></dt>
-      <dd>�����canvas�v�f�܂��BSpace�I�u�W�F�N�g�̓��e��\������SpaceView�N���X���`����B</dd>
+      <dd>左上のcanvas要素まわり。Spaceオブジェクトの内容を表示するSpaceViewクラスを定義する。</dd>
       <dt><a href="Space.js">Space.js</a></dt>
-      <dd>�V�~�����[�V�����܂��BSpace��SpaceObject�N���X���`����B</dd>
+      <dd>シミュレーションまわり。SpaceとSpaceObjectクラスを定義する。</dd>
       <dt><a href="VectorArray.js">VectorArray.js</a></dt>
-      <dd>�x�N�g���v�Z���C�u�����B�v�f��2��JavaScript�z���񎟌��x�N�g���ƌ��Ȃ��ď�������B{x:1, y:0}�̂悤��JavaScript�I�u�W�F�N�g���x�[�X�Ƃ���VectorObject.js������Ă݂����A���x�͂�͂�z��̕����ǂ������������B�����AFirefox3.6�ɂ����ă������g�p�ʂ̓I�u�W�F�N�g�x�[�X�̕������Ȃ������B�����A�O�����֐؂�ւ����Ƃ��ɃR�[�h�̏C�����ł��邾�����Ȃ��Ȃ�悤�Ȃ��Ƃ��l�����Ă���B�����A���̃��C�u������ʂ��Ă��邱�ƂŒ��ڌv�Z��������������x�������Ă��邱�Ƃ͔ۂ߂Ȃ��B</dd>
+      <dd>ベクトル計算ライブラリ。要素数2のJavaScript配列を二次元ベクトルと見なして処理する。{x:1, y:0}のようなJavaScriptオブジェクトをベースとしたVectorObject.jsも作ってみたが、速度はやはり配列の方が良さそうだった。ただ、Firefox3.6においてメモリ使用量はオブジェクトベースの方が少なかった。将来、三次元へ切り替えたときにコードの修正ができるだけ少なくなるようなことも考慮している。ただ、このライブラリを通していることで直接計算するよりも多少速度が落ちていることは否めない。</dd>
       <dt><a href="Utility.js">Utility.js</a></dt>
-      <dd>JavaScript�����DOM API�ɑ΂���ׁX�Ƃ������C�u�����B�ߋ��̃v���W�F�N�g����̃R�s�[�Ȃ̂ŁA�g���Ă��Ȃ����̂������܂܂�Ă��邩���B</dd>
+      <dd>JavaScript言語やDOM APIに対する細々としたライブラリ。過去のプロジェクトからのコピーなので、使っていないものが多く含まれているかも。</dd>
       <dt><a href="MisoPackage.js">MisoPackage.js</a></dt>
-      <dd>Java��package�̂悤�Ȃ��̂��������邾���̃��C�u�����B����̃R�[�h�͑S��Misohena.galaxysim�̒��ɓ��ꂽ�B</dd>
+      <dd>Javaのpackageのようなものを実現するだけのライブラリ。今回のコードは全てMisohena.galaxysimの中に入れた。</dd>
       <dt><a href="JavaScriptExtension.js">JavaScriptExtension.js</a></dt>
-      <dd>�ŋ߂�JavaScript����K�i�ɂ��郁�\�b�h���m���Ɏg����悤�ɂ��郉�C�u�����B</dd>
+      <dd>最近のJavaScript言語規格にあるメソッドを確実に使えるようにするライブラリ。</dd>
     </dl>
-    <h2>���C�Z���X</h2>
-    <p>�{�\�t�g�E�F�A��MIT���C�Z���X�Ɋ�Â����R�Ɏg�p���邱�Ƃ��o���܂��B</p>
+    <h2>ライセンス</h2>
+    <p>本ソフトウェアはMITライセンスに基づき自由に使用することが出来ます。</p>
 
     <p>Copyright (c) 2010 AKIYAMA Kouhei</p>
 
@@ -64,13 +64,13 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.</p>
 
-    <h2>�Q�l����</h2>
+    <h2>参考文献</h2>
     <ul>
-      <li><a href="http://www.artcompsci.org/~makino/kougi/keisan_tenmongakuII/index.html">�v�Z�V���w II - �q��~��Y</a></li>
+      <li><a href="http://www.artcompsci.org/~makino/kougi/keisan_tenmongakuII/index.html">計算天文学 II - 牧野淳一郎</a></li>
     </ul>
 
     <hr>
     <address>AKIYAMA Kouhei (Gmail: misohena / Twitter: ak10i)</address>
-    <div><!-- ts start -->Last modified: 2010-12-16 16:07:05+0900<!-- ts end --></div>
+    <div><!-- ts start -->Last modified: 2010-12-16 16:08:02+0900<!-- ts end --></div>
   </body>
 </html>
