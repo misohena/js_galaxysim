@@ -38,6 +38,7 @@
             if(dst){
                 dst[0] = s*b[0];
                 dst[1] = s*b[1];
+                return dst;
             }
             else{
                 return [s*b[0], s*b[1]];
@@ -89,6 +90,7 @@
             if(dst){
                 dst[0] =  v[0];
                 dst[1] = -v[1];
+                return dst;
             }
             else{
                 return [v[0], -v[1]];
@@ -99,6 +101,7 @@
                 var vx = v[0];
                 dst[0] = -v[1];
                 dst[1] = vx;
+                return dst;
             }
             else{
                 return [-v[1], v[0]];
@@ -108,6 +111,7 @@
             if(dst){
                 dst[0] = -v[0];
                 dst[1] = -v[1];
+                return dst;
             }
             else{
                 return [-v[0], -v[1]];
@@ -118,6 +122,7 @@
                 var vx = v[0];
                 dst[0] = v[1];
                 dst[1] = -vx;
+                return dst;
             }
             else{
                 return [v[1], -v[0]];
@@ -155,6 +160,7 @@
             if(dst){
                 dst[0] = x;
                 dst[1] = y;
+                return dst;
             }
             else{
                 return [x, y];
