@@ -238,28 +238,49 @@
 
     var PRESET_INITIAL_STATES = [
         // Title, SpaceFactory, ViewScale, ViewX, ViewY
-        {title:"Pseudo Solar System", factory:function(){
-            var space = new Space();
-            // Sun
-            space.addObject(new SpaceObject(1.9891e30, 6.96e8, Vector.newZero()));
-            // Mercury
-            space.addObject(new SpaceObject(3.302e23, 4879400/2, Vector.newOnX(57910000000), Vector.newOnY(47872.5)));
-            // Venus
-            space.addObject(new SpaceObject(4.869e24, 12103600/2, Vector.newOnX(108208930000), Vector.newOnY(35021.4)));
-            // Earth
-            space.addObject(new SpaceObject(5.9736e24, 6.356752e3, Vector.newOnX(1.49597870e11), Vector.newOnY(29780)));
-            // Mars
-            space.addObject(new SpaceObject(6.419e23, 6794400/2, Vector.newOnX(227936640000), Vector.newOnY(24130.9)));
-            // Jupiter
-            space.addObject(new SpaceObject(1.899e27, 142984000/2, Vector.newOnX(778412010000), Vector.newOnY(13069.7)));
-            // Saturn
-            space.addObject(new SpaceObject(5.688e26, 120536000/2, Vector.newOnX(1426725400000), Vector.newOnY(9672.4)));
-            // Uranus
-            //space.addObject(new SpaceObject(, , Vector.newOnX(), Vector.newOnY()));
-            // Neptune
-            //space.addObject(new SpaceObject(, , Vector.newOnX(), Vector.newOnY()));
-            return space;
+        {title:"Pseudo Solar System", space: {
+            time:0,
+            objects:[
+                // Sun
+                {mass:1.9891e30,radius:696000000,pos:[0,0],vel:[0,0]},
+                // Mercury
+                {mass:3.302e23,radius:2439700,pos:[57910000000,0],vel:[0,47872.5]},
+                // Venus
+                {mass:4.8685e24,radius:6051800,pos:[108208930000,0],vel:[0,35021.4]},
+                // Earth
+                {mass:5.9736e24,radius:6371000,pos:[149597870000,0],vel:[0,29780]},
+                // Mars
+                {mass:6.4185e23,radius:3390000,pos:[227936640000,0],vel:[0,24130.9]},
+                // Jupiter
+                {mass:1.8986e27,radius:69911000,pos:[778412010000,0],vel:[0,13069.7]},
+                // Saturn
+                {mass:5.6846e26,radius:58232000,pos:[1426725400000,0],vel:[0,9672.4]},
+                // Moon
+                {mass:7.35e+22,radius:1737100,pos:[149982270000,0],vel:[0,30802]}
+            ],eps:100,theta:0.75,collisionEnabled:true
         }, scale:5e-13, dt:21600},
+        {title:"Earth to Venus", space: {
+            time:0,
+            objects:[
+                // Sun
+                {mass:1.9891e30,radius:696000000,pos:[0,0],vel:[0,0]},
+                // Mercury
+                {mass:3.302e23,radius:2439700,pos:[57910000000,0],vel:[0,47872.5]},
+                // Venus
+                //{mass:4.8685e24,radius:6051800,pos:[108208930000,0],vel:[0,35021.4]},
+                {mass:4.8685e+24,radius:6051800,pos:[-21766139319.885067,-105913014616.0789],vel:[34329.37399060615,-7059.195792284943]},
+                // Earth
+                {mass:5.9736e24,radius:6371000,pos:[149597870000,0],vel:[0,29780]},
+                // Mars
+                {mass:6.4185e23,radius:3390000,pos:[227936640000,0],vel:[0,24130.9]},
+                // Jupiter
+                {mass:1.8986e27,radius:69911000,pos:[778412010000,0],vel:[0,13069.7]},
+                // Saturn
+                {mass:5.6846e26,radius:58232000,pos:[1426725400000,0],vel:[0,9672.4]},
+                // Probe
+                {mass:500,radius:3,pos:[149597870000,-6371000-2000],vel:[6500,29780-4200]}
+            ],eps:1,theta:0.75,collisionEnabled:true
+        }, scale:5e-12, dt:3600},
         {title:"Test Collision", factory:function(){
             var space = new Space();
             space.addObject(new SpaceObject(1e28, 6e8, Vector.newXY(-1e11, -1e11), Vector.newXY(29780, 29780)));
