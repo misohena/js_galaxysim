@@ -6,9 +6,6 @@
 // require SpaceView.js
 
 // TODO: スクリプトテンプレートを充実させる。
-// TODO: 同じ座標の物体が複数あると、ツリーの構築が終わらない問題を解決する。
-
-// TODO: 公開する。
 
 (function(){
     var mypkg = Misohena.package("Misohena", "galaxysim");

@@ -157,57 +157,76 @@
     var SpaceTreeNode = mypkg.SpaceTreeNode = function(nodeCenter, nodeSize){
         this.center = nodeCenter;
         this.size = nodeSize; //length of edge
-        this.subnodes = new Array(MAX_SUBNODES);
+        this.subnodes = null;
         this.firstObj = null;
-        this.countObj = 0;
         this.gravityCenter = Vector.newZero();
         this.gravityMass = 0;
     };
     SpaceTreeNode.prototype = {
         setObjects: function(firstObj){
             if(firstObj == null){
+                return;
             }
-            else if(firstObj.next == null){
-                firstObj.next = this.firstObj;
+            
+            if(firstObj.next == null){
                 this.firstObj = firstObj;
-                this.countObj = 1;
+                this.subnodes = null;
+                return; //leaf
             }
-            else{
-                // divide the points into four sets.
-                var subnodeObjs = new Array(MAX_SUBNODES);
-                for(var i = 0; i < MAX_SUBNODES; ++i){subnodeObjs[i] = null;}
-                var count = 0;
-                var objNext;
-                for(var obj = firstObj; obj != null; obj = objNext, ++count){
-                    objNext = obj.next;
-                    var indexBits =
-                        (Vector.getX(obj.position)>Vector.getX(this.center) ? 1 : 0)+
-                        (Vector.getY(obj.position)>Vector.getY(this.center) ? 2 : 0);
-                    obj.next = subnodeObjs[indexBits];
-                    subnodeObjs[indexBits] = obj;
-                }
-                this.countObj = count;
 
-                // create subnode objects.
-                for(var indexBits = 0; indexBits < MAX_SUBNODES; ++indexBits){
-                    if(subnodeObjs[indexBits]){
-                        var qsize = 0.25 * this.size;
-                        var snodeCenter = Vector.newXY(
-                            (indexBits&1) ? qsize : -qsize,
-                            (indexBits&2) ? qsize : -qsize);
-                        Vector.add(snodeCenter, this.center,  snodeCenter);
-                        var snode = new SpaceTreeNode(snodeCenter, 0.5*this.size);
-                        snode.setObjects(subnodeObjs[indexBits]);
-                        this.subnodes[indexBits] = snode;
-                    }
-                    else{
-                        this.subnodes[indexBits] = null;
-                    }
+            // 空間分割がいつまでたっても終わらなくなるので、
+            // 同じかごく近い位置のオブジェクトだけ存在する場合、
+            // 一つのノードに押し込める。
+            var dsize = this.size * 1e-16; //2^-53.15 means need to divide 53 levels.
+            var dsize2 = dsize*dsize;
+            for(var obj = firstObj.next; obj; obj = obj.next){
+                if(Vector.distanceSq(obj.position, firstObj.position) > dsize2){
+                    break;
+                }
+            }
+            if(!obj){
+                this.firstObj = firstObj;
+                this.subnodes = null;
+                return; //leaf
+            }
+
+            
+            // divide the points into MAX_SUBNODES sets.
+            var subnodeObjs = new Array(MAX_SUBNODES);
+            for(var i = 0; i < MAX_SUBNODES; ++i){subnodeObjs[i] = null;}
+            var thisCenterX = Vector.getX(this.center);
+            var thisCenterY = Vector.getY(this.center);
+            var objNext;
+            for(var obj = firstObj; obj != null; obj = objNext){
+                objNext = obj.next;
+                var indexBits =
+                    (Vector.getX(obj.position) > thisCenterX ? 1 : 0)+
+                    (Vector.getY(obj.position) > thisCenterY ? 2 : 0);
+                obj.next = subnodeObjs[indexBits];
+                subnodeObjs[indexBits] = obj;
+            }
+
+            // create subnode objects.
+            this.subnodes = new Array(MAX_SUBNODES);
+            
+            for(var indexBits = 0; indexBits < MAX_SUBNODES; ++indexBits){
+                if(subnodeObjs[indexBits]){
+                    var qsize = 0.25 * this.size;
+                    var snodeCenter = Vector.newXY(
+                        (indexBits&1) ? qsize : -qsize,
+                        (indexBits&2) ? qsize : -qsize);
+                    Vector.add(snodeCenter, this.center,  snodeCenter);
+                    var snode = new SpaceTreeNode(snodeCenter, 0.5*this.size);
+                    snode.setObjects(subnodeObjs[indexBits]);
+                    this.subnodes[indexBits] = snode;
+                }
+                else{
+                    this.subnodes[indexBits] = null;
                 }
             }
         },
         updateCenterOfGravity: function(){
-            if(this.countObj > 1){
+            if(this.subnodes){
                 var gCenter = Vector.newZero();
                 var gMass = 0;
                 for(var i = 0; i < MAX_SUBNODES; ++i){
@@ -222,20 +241,29 @@
                 Vector.mul(1.0/gMass, gCenter,  this.gravityCenter);
                 this.gravityMass = gMass;
             }
-            else if(this.countObj == 1){
-                Vector.assign(this.firstObj.position,  this.gravityCenter);
-                this.gravityMass = this.firstObj.mass;
-            }
             else{
-                Vector.setZero(this.gravityCenter);
-                this.gravityMass = 0;
+                if(this.firstObj && ! this.firstObj.next){ //countObj==1, fast
+                    Vector.assign(this.firstObj.position,  this.gravityCenter);
+                    this.gravityMass = this.firstObj.mass;
+                }
+                else{ //0 or 2..
+                    var gCenter = Vector.newZero();
+                    var gMass = 0;
+                    for(var obj = this.firstObj; obj; obj = obj.next){
+                        Vector.addMul(gCenter, obj.mass, obj.position,
+                                      gCenter);
+                        gMass += obj.mass;
+                    }
+                    Vector.mul(1.0/gMass, gCenter,  this.gravityCenter);
+                    this.gravityMass = gMass;
+                }
             }
         },
         accumulateGravityToObject: function(obj, eps2, theta2)
         {
             var v = Vector.sub(this.gravityCenter, obj.position);
             var r2 = Vector.lengthSq(v);
-            if(this.countObj == 1 || r2*theta2 > this.size*this.size){
+            if(r2*theta2 > this.size*this.size || (this.firstObj && !this.firstObj.next)){ //far enough or countObj==1
                 var invR2 = 1 / (r2 + eps2);
                 var invR = Math.sqrt(invR2);
                 var invR3 = invR2 * invR;
@@ -243,7 +271,7 @@
                 Vector.addMul(obj.acceleration, this.gravityMass*invR3, v,
                               obj.acceleration);
             }
-            else{
+            else if(this.subnodes){
                 for(var i = 0; i < MAX_SUBNODES; ++i){
                     var snode = this.subnodes[i];
                     if(snode){
@@ -251,34 +279,16 @@
                     }
                 }
             }
-        },
-        accumulateGravityToObject_Fast2D: function(obj, eps2, theta2)
-        {
-            // accumulateGravityToObjectの高速化版。
-            // 再帰呼び出しをやめてVector.*を使わないようにした。
-            var nodes = [this];
-            while(nodes.length){
-                var currNode = nodes.pop();
-
-                var vx = currNode.gravityCenter[0] - obj.position[0];
-                var vy = currNode.gravityCenter[1] - obj.position[1];
-                var r2 = vx*vx + vy*vy;
-                if(currNode.countObj == 1 || r2*theta2 > currNode.size*currNode.size){
+            else{
+                for(var o2 = this.firstObj; o2; o2 = o2.next){
+                    var v = Vector.sub(o2.position, obj.position);
+                    var r2 = Vector.lengthSq(v);
                     var invR2 = 1 / (r2 + eps2);
                     var invR = Math.sqrt(invR2);
                     var invR3 = invR2 * invR;
-                    obj.phi -= currNode.gravityMass * invR;
-                    var f = currNode.gravityMass*invR3;
-                    obj.acceleration[0] = obj.acceleration[0] + f * vx;
-                    obj.acceleration[1] = obj.acceleration[1] + f * vy;
-                }
-                else{
-                    for(var i = 0; i < MAX_SUBNODES; ++i){
-                        var snode = currNode.subnodes[i];
-                        if(snode){
-                            nodes.push(snode);
-                        }
-                    }
+                    obj.phi -= o2.mass * invR;
+                    Vector.addMul(obj.acceleration, o2.mass*invR3, v,
+                                  obj.acceleration);
                 }
             }
         },
@@ -295,14 +305,16 @@
         findObjectInSquare: function(center, radius, func)
         {
             if(Vector.distanceLinf(this.center, center) <= 0.5*this.size+radius){
-                if(this.countObj == 1){
-                    func(this.firstObj);
-                }
-                else if(this.countObj > 1){
+                if(this.subnodes){
                     for(var i = 0; i < MAX_SUBNODES; ++i){
                         if(this.subnodes[i]){
                             this.subnodes[i].findObjectInSquare(center, radius, func);
                         }
+                    }
+                }
+                else{
+                    for(var obj = this.firstObj; obj; obj = obj.next){
+                        func(obj);
                     }
                 }
             }
@@ -468,7 +480,6 @@
             Vector.setZero(obj.acceleration);
             obj.phi = obj.mass / Math.sqrt(eps2);
             rootNode.accumulateGravityToObject(obj, eps2, theta2);
-            //rootNode.accumulateGravityToObject_Fast2D(obj, eps2, theta2);
             Vector.mul(G, obj.acceleration,  obj.acceleration); //ここでGを掛けた方が実行効率はよいが、invR3〜のところで掛けた方がaccelerationの意味(単位)が明確かもしれない。
         }
             
