@@ -74,8 +74,8 @@
     var SpaceObject = mypkg.SpaceObject = function(mass, radius, pos, vel){
         this.mass = mass;
         this.radius = radius;
-        this.position = pos || Vector.newZero();
-        this.velocity = vel || Vector.newZero();
+        this.position = Vector.newClone(pos) || Vector.newZero();
+        this.velocity = Vector.newClone(vel) || Vector.newZero();
         this.acceleration = Vector.newZero();
         this.phi = 0;
         this.next = null; // for linked list.
