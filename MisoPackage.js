@@ -10,7 +10,7 @@
         }
         return t;
     }
-    var thispkg = package("Misohena");
+    var mypkg = package("Misohena");
 
-    thispkg.package = package;
+    mypkg.package = package;
 })();

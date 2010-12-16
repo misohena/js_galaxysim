@@ -4,17 +4,17 @@
 // require Space.js
 
 (function(){
-    var thispkg = Misohena.package("Misohena", "galaxysim");
+    var mypkg = Misohena.package("Misohena", "galaxysim");
 
     // imports
-    var Vector = thispkg.Vector;
-    var Vector2D = thispkg.Vector2D;
+    var Vector = mypkg.Vector;
+    var Vector2D = mypkg.Vector2D;
 
 
     /**
      * class SpaceView
      */
-    var SpaceView = thispkg.SpaceView = function(canvasWidth, canvasHeight)
+    var SpaceView = mypkg.SpaceView = function(canvasWidth, canvasHeight)
     {
         var view = this;
         this.center = Vector2D.newXY(0, 0);

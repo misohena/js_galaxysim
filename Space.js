@@ -3,10 +3,10 @@
 // require Vector*.js
 
 (function(){
-    var thispkg = Misohena.package("Misohena", "galaxysim");
+    var mypkg = Misohena.package("Misohena", "galaxysim");
 
     // imports
-    var Vector = thispkg.Vector;
+    var Vector = mypkg.Vector;
     
     // Constants
     var G = 6.67259e-11;
@@ -71,7 +71,7 @@
     /**
      * class SpaceObject
      */
-    var SpaceObject = thispkg.SpaceObject = function(mass, radius, pos, vel){
+    var SpaceObject = mypkg.SpaceObject = function(mass, radius, pos, vel){
         this.mass = mass;
         this.radius = radius;
         this.position = pos || Vector.newZero();
@@ -154,7 +154,7 @@
      * class SpaceTreeNode
      */
     var MAX_SUBNODES = (1<<2); // 2^DIM
-    var SpaceTreeNode = thispkg.SpaceTreeNode = function(nodeCenter, nodeSize){
+    var SpaceTreeNode = mypkg.SpaceTreeNode = function(nodeCenter, nodeSize){
         this.center = nodeCenter;
         this.size = nodeSize; //length of edge
         this.subnodes = new Array(MAX_SUBNODES);
@@ -314,7 +314,7 @@
     /**
      * class Space
      */
-    var Space = thispkg.Space = function(){
+    var Space = mypkg.Space = function(){
         this.objects = [];
         this.time = 0;
         

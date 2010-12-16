@@ -1,11 +1,11 @@
 // -*- coding: utf-8 -*-
 (function(){
-    var thispkg = Misohena.package("Misohena", "galaxysim");
+    var mypkg = Misohena.package("Misohena", "galaxysim");
     
     /**
      * Vector Math Utilities (2D & Array)
      */
-    var Vector = thispkg.Vector2D = thispkg.Vector2DArray = thispkg.Vector = {
+    var Vector = mypkg.Vector2D = mypkg.Vector2DArray = mypkg.Vector = {
         newZero: function(){ return [0, 0];},
         newOnX: function(x){ return [x, 0];},
         newOnY: function(y){ return [0, y];},

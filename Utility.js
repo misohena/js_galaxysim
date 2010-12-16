@@ -1,12 +1,12 @@
 // -*- coding: utf-8 -*-
 (function(){
-    var thispkg = Misohena.package("Misohena", "galaxysim");
+    var mypkg = Misohena.package("Misohena", "galaxysim");
 
     // -----------------------------------------------------------------------
     // * HTML Utilities
     // -----------------------------------------------------------------------
 
-    var HTML = thispkg.HTML = {
+    var HTML = mypkg.HTML = {
         createElement: function(tagName, attrs, children){
             var elem = document.createElement(tagName);
             if(attrs){
@@ -99,7 +99,7 @@
     // * JavaScript Utilities
     // -----------------------------------------------------------------------
 
-    var Util = thispkg.Util = {};
+    var Util = mypkg.Util = {};
     
     var removeDuplicationInArray = Util.removeDuplicationInArray = function(arr)
     {

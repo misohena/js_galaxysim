@@ -12,20 +12,19 @@
 
 // TODO: View下のコントロールを枠で囲む。
 // TODO: EditModeでも物体の追跡ができるようにする。ObjectPropertyWindowに追跡ボタンをつける。というか、ObjectPropertyWindowはObjectEditWindowまたはObjectWindowに改名すべき？　追跡中は速度ベクトルドラッグ時に、追跡対象物体に対する相対速度計算が必要になるので注意。
-// TODO: index.htmlを書く。
 // TODO: 公開する。
 
 (function(){
-    var thispkg = Misohena.package("Misohena", "galaxysim");
+    var mypkg = Misohena.package("Misohena", "galaxysim");
 
     // imports
-    var HTML = thispkg.HTML;
-    var Util = thispkg.Util;
-    var Vector = thispkg.Vector;
-    var Vector2D = thispkg.Vector2D;
-    var Space = thispkg.Space;
-    var SpaceObject = thispkg.SpaceObject;
-    var SpaceView = thispkg.SpaceView;
+    var HTML = mypkg.HTML;
+    var Util = mypkg.Util;
+    var Vector = mypkg.Vector;
+    var Vector2D = mypkg.Vector2D;
+    var Space = mypkg.Space;
+    var SpaceObject = mypkg.SpaceObject;
+    var SpaceView = mypkg.SpaceView;
 
     // Constants
     var CANVAS_WIDTH = 480;
@@ -1054,7 +1053,7 @@
             document.body.appendChild(lwin.getElement());
             lc.load.addEventListener("click", function(){
                 try{
-                    thispkg.app.initSpace(JSON.parse(lc.data.value));
+                    mypkg.app.initSpace(JSON.parse(lc.data.value));
                 }
                 catch(e){
                     alert(e);
@@ -1330,9 +1329,9 @@
     /**
      * function main
      */
-    thispkg.main = function() {
-        if(!thispkg.app){
-            thispkg.app = new App();
+    mypkg.main = function() {
+        if(!mypkg.app){
+            mypkg.app = new App();
         }
     };
     
