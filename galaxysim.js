@@ -8,10 +8,6 @@
 // TODO: スクリプトテンプレートを充実させる。
 // TODO: 同じ座標の物体が複数あると、ツリーの構築が終わらない問題を解決する。
 
-// TODO: 現在の状態をクッキーに出力できるようにする。
-
-// TODO: View下のコントロールを枠で囲む。
-// TODO: 追跡中は速度ベクトルドラッグ時に、追跡対象物体に対する相対速度計算が必要になるので注意。
 // TODO: 公開する。
 
 (function(){
@@ -484,16 +480,14 @@
         function dragVelocity(stroke){
             if(stroke.downVelArrowEditTarget){
                 var et = stroke.downVelArrowEditTarget;
-                var obj = et.getObject();
                 var velArrowScale = stroke.downVelArrowScale;//et.getVelArrowScale();
                 var tail = et.getVelArrowTail();
 
                 var newVel2D = Vector2D.negateY(Vector2D.mul(1/velArrowScale, Vector2D.sub(stroke.currPos, tail)));
                 if(Vector2D.isFinite(newVel2D)){
-                    Vector.setXY(
-                        obj.velocity,
+                    et.setVelocity(Vector.newXY(
                         Vector2D.getX(newVel2D),
-                        Vector2D.getY(newVel2D) );
+                        Vector2D.getY(newVel2D) ));
                     space.dispatchObjectChangedEvent();
                     view.invalidateAndClear();
                 }
@@ -563,14 +557,32 @@
             var velArrowScale = NaN;
             
             updateVelArrowScale();
-            
+
+            function getVelocity(){
+                var tracked = getTrackingTarget();
+                if(tracked){
+                    return Vector.sub(obj.velocity, tracked.velocity);
+                }
+                else{
+                    return Vector.newClone(obj.velocity);
+                }
+            }
+            function setVelocity(v){
+                var tracked = getTrackingTarget();
+                if(tracked){
+                    Vector.add(v, tracked.velocity,  obj.velocity);
+                }
+                else{
+                    Vector.assign(v, obj.velocity);
+                }
+            }
             function updateVelArrowScaleInner(){
-                var speed = Vector.length(obj.velocity);
+                var speed = Vector.length(getVelocity());
                 velArrowScale = VEL_ARROW_LENGTH/speed; // NaN,INF,-INF
             }
             function updateVelArrowScale(){
                 if(isFinite(velArrowScale)){
-                    var speed = Vector.length(obj.velocity);
+                    var speed = Vector.length(getVelocity());
                     var velArrowPixels = speed*velArrowScale;
                     if(velArrowPixels > VEL_ARROW_LENGTH_MAX ||
                        velArrowPixels < VEL_ARROW_LENGTH_MIN){
@@ -588,7 +600,7 @@
             function getVelArrowVec(){
                 updateVelArrowScale();
                 if(isFinite(velArrowScale)){
-                    return Vector2D.negateY(Vector2D.mul(velArrowScale, obj.velocity));
+                    return Vector2D.negateY(Vector2D.mul(velArrowScale, getVelocity()));
                 }
                 else{
                     return Vector2D.newXY(VEL_ARROW_LENGTH, 0);
@@ -655,6 +667,7 @@
                 isPositionOnHeadArrow: isPositionOnHeadArrow,
                 drawVelArrow: drawVelArrow,
                 getObject: function() { return obj;},
+                setVelocity: setVelocity,
             };
         }
         
@@ -708,6 +721,9 @@
             if(obj){
                 tracker = new SpaceView.ObjectTracker(space, obj, view);
             }
+        }
+        function getTrackingTarget(){
+            return tracker ? tracker.getTarget() : null;
         }
         
         // public
