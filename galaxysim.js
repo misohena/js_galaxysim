@@ -5,6 +5,8 @@
 // require Space.js
 // require SpaceView.js
 
+// TODO: timesliceやepsilon、Viewの状態もJSON保存する。
+// TODO: プリセット初期状態を充実させる。
 // TODO: スクリプトテンプレートを充実させる。
 
 (function(){
