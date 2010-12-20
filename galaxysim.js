@@ -260,28 +260,48 @@
                 {mass:7.35e+22,radius:1737100,pos:[149982270000,0],vel:[0,30802]}
             ],eps:100,theta:0.75,collisionEnabled:true
         }, scale:5e-13, dt:21600},
-        {title:"Earth to Venus", space: {
-            time:0,
-            objects:[
-                // Sun
-                {mass:1.9891e30,radius:696000000,pos:[0,0],vel:[0,0]},
-                // Mercury
-                {mass:3.302e23,radius:2439700,pos:[57910000000,0],vel:[0,47872.5]},
-                // Venus
-                //{mass:4.8685e24,radius:6051800,pos:[108208930000,0],vel:[0,35021.4]},
-                {mass:4.8685e+24,radius:6051800,pos:[-21766139319.885067,-105913014616.0789],vel:[34329.37399060615,-7059.195792284943]},
-                // Earth
-                {mass:5.9736e24,radius:6371000,pos:[149597870000,0],vel:[0,29780]},
-                // Mars
-                {mass:6.4185e23,radius:3390000,pos:[227936640000,0],vel:[0,24130.9]},
-                // Jupiter
-                {mass:1.8986e27,radius:69911000,pos:[778412010000,0],vel:[0,13069.7]},
-                // Saturn
-                {mass:5.6846e26,radius:58232000,pos:[1426725400000,0],vel:[0,9672.4]},
-                // Probe
-                {mass:500,radius:3,pos:[149597870000,-6371000-2000],vel:[6500,29780-4200]}
-            ],eps:1,theta:0.75,collisionEnabled:true
-        }, scale:5e-12, dt:3600},
+        {title:"Earth to Venus",
+         factory:function(){
+             var space = new Space();
+             space.setState({
+                 time:0,
+                 objects:[
+                     {name:"Sun", mass:1.9891e30,radius:696000000,pos:[0,0],vel:[0,0]},
+                     {name:"Mercury", mass:3.302e23,radius:2439700,pos:[57910000000,0],vel:[0,47872.5]},
+                     //{name:"Venus", mass:4.8685e24,radius:6051800,pos:[108208930000,0],vel:[0,35021.4]},
+                     {name:"Venus", mass:4.8685e+24,radius:6051800,pos:[-21766139319.885067,-105913014616.0789],vel:[34329.37399060615,-7059.195792284943]},
+                     {name:"Earth", mass:5.9736e24,radius:6371000,pos:[149597870000,0],vel:[0,29780]},
+                     {name:"Mars", mass:6.4185e23,radius:3390000,pos:[227936640000,0],vel:[0,24130.9]},
+                     {name:"Jupiter", mass:1.8986e27,radius:69911000,pos:[778412010000,0],vel:[0,13069.7]},
+                     {name:"Saturn", mass:5.6846e26,radius:58232000,pos:[1426725400000,0],vel:[0,9672.4]},
+                     {name:"Probe", mass:500,radius:3,pos:[149597870000,-6371000-2000],vel:[6410,29780-4200]}
+                 ],eps:1,theta:0.75,collisionEnabled:true
+             });
+             space.setOrbitRecordingEnabled(true);
+             var phase = 0;
+             space.addEventListener("step", function(e){
+                 switch(phase){
+                 case 0:
+                     if(space.time > 170*24*60*60){
+                         mypkg.app.setTimeSlice(1800);
+                         mypkg.app.setTrackingTarget(space.findObjectByName("Venus"));
+                         mypkg.app.getView().setScaleByCanvasSize(1e-10);
+                         ++phase;
+                     }
+                     break;
+                 case 1:
+                     if(space.time > 188*24*60*60){
+                         mypkg.app.setTimeSlice(180);
+                         mypkg.app.setTrackingTarget(space.findObjectByName("Venus"));
+                         mypkg.app.getView().setScaleByCanvasSize(1e-9);
+                         ++phase;
+                     }
+                     break;
+                 }
+             });
+             return space;
+         },
+         scale:5e-12, dt:3600},
         {title:"Test Collision", factory:function(){
             var space = new Space();
             space.addObject(new SpaceObject(1e28, 6e8, Vector.newXY(-1e11, -1e11), Vector.newXY(29780, 29780)));
@@ -452,6 +472,7 @@
                 }
             });
 
+        this.setTrackingTarget = setTrackingTarget;
         this.close = function(){
             mouseHandler.release();
             setTrackingTarget(null); //release object tracker.
@@ -1377,6 +1398,23 @@
         }
 
         initSpace(PRESET_INITIAL_STATES[0]);
+
+        // public methods
+
+        this.setTimeSlice = function(dt){
+            if(conductor){
+                conductor.setTimeSlice(dt);
+            }
+            if(controlPanel){
+                controlPanel.updateControls();
+            }
+        };
+
+        this.setTrackingTarget = function(obj){
+            if(currentMode && currentMode.setTrackingTarget){
+                currentMode.setTrackingTarget(obj);
+            }
+        };
     }
 
 

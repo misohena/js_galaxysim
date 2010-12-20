@@ -108,6 +108,10 @@
             this.scale = s;
             this.invalidateAndClear();
         },
+        setScaleByCanvasSize: function(s){
+            this.setScale(0.5*Math.min(this.getCanvas().width, this.getCanvas().height)*s);
+        },
+
         setCenter: function(p){
             Vector2D.assign(p,  this.center);
             this.invalidateAndClear();
