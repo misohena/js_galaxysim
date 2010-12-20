@@ -400,8 +400,8 @@
         setCollisionEnabled: function(b) { this.collisionEnabled = !!b;},
 
         getOrbitRecordingEnabled: function() { return this.orbitRecordingEnabled;},
-        setOrbitRecordingEnabled: function(b) { this.orbitRecordingEnabled = !!b;},
-        clearOrbitData: function(){
+        setOrbitRecordingEnabled: function(b) {
+            this.orbitRecordingEnabled = !!b;
             clearOrbits(this.objects);
         },
         

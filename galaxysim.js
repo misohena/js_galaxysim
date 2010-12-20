@@ -1275,7 +1275,6 @@
         }, false);
         c.recordOrbitsCheckbox.addEventListener("click", function(e){
             app.getSpace().setOrbitRecordingEnabled(e.target.checked);
-            app.getSpace().clearOrbitData();
             c.visibleOrbitsCheckbox.disabled = !e.target.checked;
         }, false);
 
