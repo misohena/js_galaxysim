@@ -28,6 +28,7 @@
 
         this.extraPainter = null;
         this.tracker = null;
+        this.trackingTargetRelative = false;
         
         this.onSpaceObjectChanged = function(e){ view.invalidate();};
         
@@ -90,6 +91,7 @@
         getVisibleAxis: function() { return this.visibleAxis;},
         getVisibleOrbits: function() { return this.visibleOrbits;},
         getEnabledBlur: function() { return this.enabledBlur;},
+        getTrackingTargetRelative: function() { return this.trackingTargetRelative;},
         
         setSpace: function(space){
             this.setTrackingTarget(null); //release Tracking Mode
@@ -140,6 +142,10 @@
         },
         setEnabledBlur: function(b){
             this.enabledBlur = b;
+            this.invalidateAndClear();
+        },
+        setTrackingTargetRelative: function(b){
+            this.trackingTargetRelative = b;
             this.invalidateAndClear();
         },
 
