@@ -111,6 +111,9 @@
         setScaleByCanvasSize: function(s){
             this.setScale(0.5*Math.min(this.getCanvas().width, this.getCanvas().height)*s);
         },
+        getScaleByCanvasSize: function(){
+            return this.scale / (0.5*Math.min(this.getCanvas().width, this.getCanvas().height));
+        },
 
         setCenter: function(p){
             Vector2D.assign(p,  this.center);

@@ -91,12 +91,16 @@
             return this.id;
         },
         getState: function(){
-            return {
+            var s = {
                 mass: this.mass,
                 radius: this.radius,
                 pos: this.position,
                 vel: this.velocity,
             };
+            if(this.name){
+                s.name = this.name;
+            }
+            return s;
         },
         destroy: function(){
             this.mass = 0;
@@ -352,13 +356,15 @@
                 eps: this.eps,
                 theta: this.theta,
                 collisionEnabled: this.collisionEnabled,
+                orbitRecordingEnabled: this.orbitRecordingEnabled,
             };
         },
         setState: function(state){
-            //ignore state.time
+            this.time = state.time;
             this.setEpsilon(state.eps);
             this.setTheta(state.theta);
             this.setCollisionEnabled(state.collisionEnabled);
+            this.setOrbitRecordingEnabled(state.orbitRecordingEnabled);
             for(var oi = 0; oi < state.objects.length; ++oi){
                 var os = state.objects[oi];
                 var o = new SpaceObject(os.mass, os.radius, os.pos, os.vel)

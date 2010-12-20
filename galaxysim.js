@@ -5,10 +5,8 @@
 // require Space.js
 // require SpaceView.js
 
-// TODO: timesliceやepsilon、Viewの状態もJSON保存する。
 // TODO: プリセット初期状態を充実させる。
 // TODO: スクリプトテンプレートを充実させる。
-// TODO: 軌道をちゃんと表示する。
 
 (function(){
     var mypkg = Misohena.package("Misohena", "galaxysim");
@@ -275,9 +273,8 @@
                      {name:"Jupiter", mass:1.8986e27,radius:69911000,pos:[778412010000,0],vel:[0,13069.7]},
                      {name:"Saturn", mass:5.6846e26,radius:58232000,pos:[1426725400000,0],vel:[0,9672.4]},
                      {name:"Probe", mass:500,radius:3,pos:[149597870000,-6371000-2000],vel:[6410,29780-4200]}
-                 ],eps:1,theta:0.75,collisionEnabled:true
+                 ],eps:1,theta:0.75,collisionEnabled:true, orbitRecordingEnabled: true
              });
-             space.setOrbitRecordingEnabled(true);
              var phase = 0;
              space.addEventListener("step", function(e){
                  switch(phase){
@@ -301,7 +298,7 @@
              });
              return space;
          },
-         scale:5e-12, dt:3600},
+         scale:5e-12, dt:3600, viewBlur:false},
         {title:"Test Collision", factory:function(){
             var space = new Space();
             space.addObject(new SpaceObject(1e28, 6e8, Vector.newXY(-1e11, -1e11), Vector.newXY(29780, 29780)));
@@ -1077,7 +1074,11 @@
         c.buttonSaveStateToJSON.addEventListener("click", function(e){
             var data = JSON.stringify({
                 space: editMode.getSpace().getState(),
-                dt: editMode.getConductor().getTimeSlice()
+                dt: editMode.getConductor().getTimeSlice(),
+                scale: editMode.getView().getScaleByCanvasSize(),
+                viewX: editMode.getView().getCenterX(),
+                viewY: editMode.getView().getCenterY(),
+                viewBlur: editMode.getView().getEnabledBlur()
             });
 
             var now = new Date();
@@ -1327,6 +1328,7 @@
             c.thetaTextbox.value = app.getSpace().getTheta();
             c.collisionCheckbox.checked = app.getSpace().getCollisionEnabled();
             c.recordOrbitsCheckbox.checked = app.getSpace().getOrbitRecordingEnabled();
+            c.visibleOrbitsCheckbox.disabled = !c.recordOrbitsCheckbox.checked;
         }
         this.selectMode = function(index){
             c.modeSelect.selectedIndex = index;
