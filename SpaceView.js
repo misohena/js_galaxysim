@@ -27,6 +27,7 @@
         this.enabledBlur = true;
 
         this.extraPainter = null;
+        this.tracker = null;
         
         this.onSpaceObjectChanged = function(e){ view.invalidate();};
         
@@ -91,6 +92,8 @@
         getEnabledBlur: function() { return this.enabledBlur;},
         
         setSpace: function(space){
+            this.setTrackingTarget(null); //release Tracking Mode
+            
             if(this.space){
                 this.space.removeEventListener("objectchanged", this.onSpaceObjectChanged);
             }
@@ -337,6 +340,24 @@
                     0.5*cv.height - (Vector.getY(spacePos) - viewY) * scale);
             }
         },
+
+        setTrackingTarget: function(obj){
+            if(this.tracker){
+                this.tracker.cancel();
+                this.tracker = null;
+                view.invalidateAndClear();
+            }
+            if(obj){
+                this.tracker = new SpaceView.ObjectTracker(
+                    this.getSpace(),
+                    obj,
+                    this);
+                view.invalidateAndClear();
+            }
+        },
+        getTrackingTarget: function(){
+            return this.tracker ? this.tracker.getTarget() : null;
+        }
     };
 
 

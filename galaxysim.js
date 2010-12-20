@@ -281,7 +281,7 @@
                  case 0:
                      if(space.time > 170*24*60*60){
                          mypkg.app.setTimeSlice(1800);
-                         mypkg.app.setTrackingTarget(space.findObjectByName("Venus"));
+                         mypkg.app.getView().setTrackingTarget(space.findObjectByName("Venus"));
                          mypkg.app.getView().setScaleByCanvasSize(1e-10);
                          ++phase;
                      }
@@ -289,7 +289,7 @@
                  case 1:
                      if(space.time > 188*24*60*60){
                          mypkg.app.setTimeSlice(180);
-                         mypkg.app.setTrackingTarget(space.findObjectByName("Venus"));
+                         mypkg.app.getView().setTrackingTarget(space.findObjectByName("Venus"));
                          mypkg.app.getView().setScaleByCanvasSize(1e-9);
                          ++phase;
                      }
@@ -438,19 +438,6 @@
         this.view = view;
         var cv = view.getCanvas();
 
-        // manage tracking state.
-        var tracker = null;
-        function setTrackingTarget(obj){
-            view.invalidateAndClear();
-            if(tracker){
-                tracker.cancel();
-                tracker = null;
-            }
-            if(obj){
-                tracker = new SpaceView.ObjectTracker(space, obj, view);
-            }
-        }
-
         // add mouse event handlers.
         var mouseHandler = setMouseHandler(
             cv, {
@@ -461,18 +448,16 @@
                     // select tracking target by clicking.
                     var obj = view.getObjectAtPointOnCanvas(stroke.downPos, PICKING_RADIUS);
                     if(obj){
-                        setTrackingTarget(obj);
+                        view.setTrackingTarget(obj);
                     }
                     else{
-                        setTrackingTarget(null);
+                        view.setTrackingTarget(null);
                     }
                 }
             });
 
-        this.setTrackingTarget = setTrackingTarget;
         this.close = function(){
             mouseHandler.release();
-            setTrackingTarget(null); //release object tracker.
         };
     }
     ViewMode.title = "View Mode";
@@ -598,7 +583,7 @@
             updateVelArrowScale();
 
             function getVelocity(){
-                var tracked = getTrackingTarget();
+                var tracked = view.getTrackingTarget();
                 if(tracked){
                     return Vector.sub(obj.velocity, tracked.velocity);
                 }
@@ -607,7 +592,7 @@
                 }
             }
             function setVelocity(v){
-                var tracked = getTrackingTarget();
+                var tracked = view.getTrackingTarget();
                 if(tracked){
                     Vector.add(v, tracked.velocity,  obj.velocity);
                 }
@@ -749,32 +734,14 @@
         // Edit Mode Menu
         var editWin = EditModeWindow.open(this);
 
-        // tracking state.
-        var tracker = null;
-        function setTrackingTarget(obj){
-            view.invalidateAndClear();
-            if(tracker){
-                tracker.cancel();
-                tracker = null;
-            }
-            if(obj){
-                tracker = new SpaceView.ObjectTracker(space, obj, view);
-            }
-        }
-        function getTrackingTarget(){
-            return tracker ? tracker.getTarget() : null;
-        }
-        
         // public
 
         this.openObjectPropertyWindow = openObjectPropertyWindow;
         this.setEditTarget = setCurrentEditTarget;
-        this.setTrackingTarget = setTrackingTarget;
         this.getSpace = function(){ return space;};
         this.getView = function(){ return view;};
         this.getConductor = function(){ return conductor;};
         this.close = function(){
-            setTrackingTarget(null); //release object tracker.
             releaseCurrentEditTarget();
             mouseHandler.release();
             ObjectPropertyWindow.closeAll(space);
@@ -981,7 +948,7 @@
         
         function trackObject(){
             if(targetSpace && targetObject && editMode){
-                editMode.setTrackingTarget(targetObject);
+                editMode.getView().setTrackingTarget(targetObject);
             }
         }
 
@@ -1409,12 +1376,6 @@
             }
             if(controlPanel){
                 controlPanel.updateControls();
-            }
-        };
-
-        this.setTrackingTarget = function(obj){
-            if(currentMode && currentMode.setTrackingTarget){
-                currentMode.setTrackingTarget(obj);
             }
         };
     }
