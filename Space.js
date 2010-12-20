@@ -84,6 +84,9 @@
         this.id = spaceObjectIdCounter++; //unique number
     };
     SpaceObject.prototype = {
+        setName: function(name){
+            this.name = name;
+        },
         getId: function(){
             return this.id;
         },
@@ -357,8 +360,12 @@
             this.setTheta(state.theta);
             this.setCollisionEnabled(state.collisionEnabled);
             for(var oi = 0; oi < state.objects.length; ++oi){
-                var o = state.objects[oi];
-                this.addObject(new SpaceObject(o.mass, o.radius, o.pos, o.vel));
+                var os = state.objects[oi];
+                var o = new SpaceObject(os.mass, os.radius, os.pos, os.vel)
+                if(os.name){
+                    o.setName(os.name);
+                }
+                this.addObject(o);
             }
         },
         getEpsilon: function() { return this.eps;},
@@ -414,6 +421,17 @@
                 }
             }
         },
+
+        findObjectByName: function(name){
+            for(var i = 0; i < this.objects.length; ++i){
+                var o = this.objects[i];
+                var n = o.name;
+                if(n && n == name){
+                    return o;
+                }
+            }
+            return null;
+        }
     };
     EventDispatcher.addMethodTo(Space.prototype);
     function removeDestroyed(objects)
