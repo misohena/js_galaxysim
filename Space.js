@@ -363,18 +363,33 @@
             };
         },
         setState: function(state){
-            this.time = state.time;
-            this.setEpsilon(state.eps);
-            this.setTheta(state.theta);
-            this.setCollisionEnabled(state.collisionEnabled);
-            this.setOrbitRecordingEnabled(state.orbitRecordingEnabled);
-            for(var oi = 0; oi < state.objects.length; ++oi){
-                var os = state.objects[oi];
-                var o = new SpaceObject(os.mass, os.radius, os.pos, os.vel)
-                if(os.name){
-                    o.setName(os.name);
+            if(state.time !== undefined){
+                this.time = state.time;
+            }
+            if(state.frames !== undefined){
+                this.frames = state.frames;
+            }
+            if(state.eps !== undefined){
+                this.setEpsilon(state.eps);
+            }
+            if(state.theta !== undefined){
+                this.setTheta(state.theta);
+            }
+            if(state.collisionEnabled !== undefined){
+                this.setCollisionEnabled(state.collisionEnabled);
+            }
+            if(state.orbitRecordingEnabled !== undefined){
+                this.setOrbitRecordingEnabled(state.orbitRecordingEnabled);
+            }
+            if(state.objects !== undefined){
+                for(var oi = 0; oi < state.objects.length; ++oi){
+                    var os = state.objects[oi];
+                    var o = new SpaceObject(os.mass, os.radius, os.pos, os.vel)
+                    if(os.name){
+                        o.setName(os.name);
+                    }
+                    this.addObject(o);
                 }
-                this.addObject(o);
             }
         },
         getEpsilon: function() { return this.eps;},
