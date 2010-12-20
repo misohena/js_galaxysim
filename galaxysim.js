@@ -240,22 +240,14 @@
         {title:"Pseudo Solar System", space: {
             time:0,
             objects:[
-                // Sun
-                {mass:1.9891e30,radius:696000000,pos:[0,0],vel:[0,0]},
-                // Mercury
-                {mass:3.302e23,radius:2439700,pos:[57910000000,0],vel:[0,47872.5]},
-                // Venus
-                {mass:4.8685e24,radius:6051800,pos:[108208930000,0],vel:[0,35021.4]},
-                // Earth
-                {mass:5.9736e24,radius:6371000,pos:[149597870000,0],vel:[0,29780]},
-                // Mars
-                {mass:6.4185e23,radius:3390000,pos:[227936640000,0],vel:[0,24130.9]},
-                // Jupiter
-                {mass:1.8986e27,radius:69911000,pos:[778412010000,0],vel:[0,13069.7]},
-                // Saturn
-                {mass:5.6846e26,radius:58232000,pos:[1426725400000,0],vel:[0,9672.4]},
-                // Moon
-                {mass:7.35e+22,radius:1737100,pos:[149982270000,0],vel:[0,30802]}
+                {name:"Sun", mass:1.9891e30,radius:696000000,pos:[0,0],vel:[0,0]},
+                {name:"Mercury", mass:3.302e23,radius:2439700,pos:[57910000000,0],vel:[0,47872.5]},
+                {name:"Venus", mass:4.8685e24,radius:6051800,pos:[108208930000,0],vel:[0,35021.4]},
+                {name:"Earth", mass:5.9736e24,radius:6371000,pos:[149597870000,0],vel:[0,29780]},
+                {name:"Mars", mass:6.4185e23,radius:3390000,pos:[227936640000,0],vel:[0,24130.9]},
+                {name:"Jupiter", mass:1.8986e27,radius:69911000,pos:[778412010000,0],vel:[0,13069.7]},
+                {name:"Saturn", mass:5.6846e26,radius:58232000,pos:[1426725400000,0],vel:[0,9672.4]},
+                {name:"Moon", mass:7.35e+22,radius:1737100,pos:[149982270000,0],vel:[0,30802]}
             ],eps:100,theta:0.75,collisionEnabled:true, orbitRecordingEnabled:true
         }, scale:5e-13, dt:21600, viewBlur:false},
         {title:"Earth to Venus",
