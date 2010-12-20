@@ -341,6 +341,7 @@
     var Space = mypkg.Space = function(){
         this.objects = [];
         this.time = 0;
+        this.frames = 0;
         
         this.eps = DEFAULT_EPS;
         this.eps2 = this.eps*this.eps;
@@ -355,6 +356,7 @@
         getState: function(){
             return {
                 time: this.time,
+                frames: this.frames,
                 objects: this.objects.map(function(o){return o.getState();}),
                 eps: this.eps,
                 theta: this.theta,
@@ -417,9 +419,10 @@
             stepObjects(dt, this.objects, this.eps2, this.theta2, this.collisionEnabled);
             removeDestroyed(this.objects);
             if(this.orbitRecordingEnabled){
-                recordOrbits(this.objects);
+                recordOrbits(this.objects, this.frames);
             }
             this.time += dt;
+            ++this.frames;
             
             this.dispatchEvent({type:"step", target:this, dt:dt});
             this.dispatchObjectChangedEvent();
@@ -599,15 +602,31 @@
     }
 
     // 全ての物体について、軌道を記録します。
-    function recordOrbits(objects){
-        objects.forEach(recordOrbit);
+    function recordOrbits(objects, currFrame){
+        for(var i = 0; i < objects.length; ++i){
+            recordOrbit(objects[i], currFrame);
+        }
     }
     function clearOrbits(objects){
         objects.forEach(function(obj){
             delete obj.orbit;
         });
     }
-    function recordOrbit(obj){
+    function recordOrbit(obj, currFrame){
+        var orbit = obj.orbit || (obj.orbit = {
+            firstFrame: currFrame,
+            points:[]
+        });
+        //全時点ごとの全物体間の相対座標を求められるようにするために、全ての座標を保存する必要がある。
+        orbit.points.push(Vector.newClone(obj.position));
+        var d = orbit.points.length - MAX_ORBIT_POINTS;
+        if(d > 0){
+            orbit.points.splice(0, d);
+            orbit.firstFrame += d;
+        }
+    }
+    /*
+    function recordOrbit(obj, currFrame){
         var currPos = Vector.newClone(obj.position);
         
         var orbit = obj.orbit;
@@ -643,7 +662,8 @@
         }
         orbit.lastPos = currPos;
     }
-    
+    */
+
     // 全ての物体について、時間を進めます。
     function stepObjects(dt, objects, eps2, theta2, collisionEnabled)
     {
