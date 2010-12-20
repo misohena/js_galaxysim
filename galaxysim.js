@@ -899,7 +899,7 @@
                 clearPropertyChangedAll();
                 updateElements();
 
-                win.setCaptionText("Object #"+targetObject.getId());
+                win.setCaptionText(targetObject.getName());
 
                 targetObject.addEventListener("merged", onObjectMerged);
                 targetObject.addEventListener("removefromspace", onObjectRemove);

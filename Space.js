@@ -87,6 +87,9 @@
         setName: function(name){
             this.name = name;
         },
+        getName: function(){
+            return this.name || "Object #"+this.id;
+        },
         getId: function(){
             return this.id;
         },
