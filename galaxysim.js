@@ -256,8 +256,8 @@
                 {mass:5.6846e26,radius:58232000,pos:[1426725400000,0],vel:[0,9672.4]},
                 // Moon
                 {mass:7.35e+22,radius:1737100,pos:[149982270000,0],vel:[0,30802]}
-            ],eps:100,theta:0.75,collisionEnabled:true
-        }, scale:5e-13, dt:21600},
+            ],eps:100,theta:0.75,collisionEnabled:true, orbitRecordingEnabled:true
+        }, scale:5e-13, dt:21600, viewBlur:false},
         {title:"Earth to Venus",
          factory:function(){
              var space = new Space();
