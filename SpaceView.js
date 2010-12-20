@@ -23,6 +23,7 @@
         this.clearRequested = false;
         this.space = null;
         this.visibleAxis = false;
+        this.visibleOrbits = false;
         this.enabledBlur = true;
 
         this.extraPainter = null;
@@ -86,6 +87,7 @@
         getCenterX: function() { return Vector2D.getX(this.center);},
         getCenterY: function() { return Vector2D.getY(this.center);},
         getVisibleAxis: function() { return this.visibleAxis;},
+        getVisibleOrbits: function() { return this.visibleOrbits;},
         getEnabledBlur: function() { return this.enabledBlur;},
         
         setSpace: function(space){
@@ -122,6 +124,10 @@
             this.visibleAxis = b;
             this.invalidateAndClear();
         },
+        setVisibleOrbits: function(b){
+            this.visibleOrbits = b;
+            this.invalidateAndClear();
+        },
         setEnabledBlur: function(b){
             this.enabledBlur = b;
             this.invalidateAndClear();
@@ -152,6 +158,9 @@
             this.clearCanvas(this.enabledBlur ? 0.01 : 1);
             if(this.visibleAxis){
                 this.drawAxis();
+            }
+            if(this.visibleOrbits){
+                this.drawOrbits();
             }
             this.drawObjects();
             this.drawStatus();
@@ -208,7 +217,7 @@
             for(var i = 0; i < space.objects.length; ++i){
                 var o = space.objects[i];
                 if(o.isDestroyed()){
-                    return;
+                    continue;
                 }
                 var x = 0.5*cv.width + (Vector.getX(o.position) - viewX) * scale;
                 var y = 0.5*cv.height - (Vector.getY(o.position) - viewY) * scale;
@@ -220,6 +229,38 @@
                 ctx.arc(x, y, r, 0, 2*Math.PI, false);
                 ctx.fill();
             };
+        },
+        drawOrbits: function(){
+            var space = this.space;
+            if(!space.getOrbitRecordingEnabled()){
+                return;
+            }
+            for(var i = 0; i < space.objects.length; ++i){
+                this.drawOrbit(space.objects[i]);
+            }
+        },
+        drawOrbit: function(obj){
+            if(obj.isDestroyed() || !obj.orbit){
+                return;
+            }
+            var ctx = this.getContext2D();
+            var pos = Vector.newZero();
+
+            ctx.strokeStyle = "#505050";
+            ctx.beginPath();
+            
+            this.convertSpaceToCanvas(obj.orbit.points[0], pos);
+            ctx.moveTo(Vector.getX(pos), Vector.getY(pos));
+            
+            for(var i = 1; i < obj.orbit.points.length; ++i){
+                this.convertSpaceToCanvas(obj.orbit.points[i], pos);
+                ctx.lineTo(Vector.getX(pos), Vector.getY(pos));
+            }
+
+            this.convertSpaceToCanvas(obj.position, pos);
+            ctx.lineTo(Vector.getX(pos), Vector.getY(pos));
+
+            ctx.stroke();
         },
         drawStatus: function(){
             var cv = this.getCanvas();
@@ -270,15 +311,24 @@
             return null;
         },
 
-        convertSpaceToCanvas: function(spacePos){
+        convertSpaceToCanvas: function(spacePos, dst){
             var cv = this.getCanvas();
             var scale = this.getScale();
             var viewX = this.getCenterX();
             var viewY = this.getCenterY();
 
-            return Vector2D.newXY(
-                0.5*cv.width  + (Vector.getX(spacePos) - viewX) * scale,
-                0.5*cv.height - (Vector.getY(spacePos) - viewY) * scale);
+            if(dst){
+                Vector.setXY(
+                    dst,
+                    0.5*cv.width  + (Vector.getX(spacePos) - viewX) * scale,
+                    0.5*cv.height - (Vector.getY(spacePos) - viewY) * scale);
+                return dst;
+            }
+            else{
+                return Vector2D.newXY(
+                    0.5*cv.width  + (Vector.getX(spacePos) - viewX) * scale,
+                    0.5*cv.height - (Vector.getY(spacePos) - viewY) * scale);
+            }
         },
     };
 

@@ -13,6 +13,8 @@
     var DEFAULT_EPS = 1e9;
     var DEFAULT_THETA = 0.75;
 
+    var MAX_ORBIT_POINTS = 1000;
+
     /**
      * class EventDispatcher
      * @todo Move to library
@@ -337,6 +339,7 @@
         this.theta2 = this.theta*this.theta;
 
         this.collisionEnabled = true;
+        this.orbitRecordingEnabled = false;
     };
     Space.prototype = {
         getState: function(){
@@ -364,6 +367,13 @@
         setTheta: function(v) { if(isFinite(v)){this.theta = v; this.theta2 = v*v;}},
         getCollisionEnabled: function() { return this.collisionEnabled;},
         setCollisionEnabled: function(b) { this.collisionEnabled = !!b;},
+
+        getOrbitRecordingEnabled: function() { return this.orbitRecordingEnabled;},
+        setOrbitRecordingEnabled: function(b) { this.orbitRecordingEnabled = !!b;},
+        clearOrbitData: function(){
+            clearOrbits(this.objects);
+        },
+        
         addObject: function(o) { this.objects.push(o);},
         removeObject: function(o) {
             var index = this.objects.indexOf(o);
@@ -375,6 +385,9 @@
         step: function(dt) {
             stepObjects(dt, this.objects, this.eps2, this.theta2, this.collisionEnabled);
             removeDestroyed(this.objects);
+            if(this.orbitRecordingEnabled){
+                recordOrbits(this.objects);
+            }
             this.time += dt;
             
             this.dispatchEvent({type:"step", target:this, dt:dt});
@@ -543,6 +556,52 @@
         ///@todo 衝突判定処理
     }
 
+    // 全ての物体について、軌道を記録します。
+    function recordOrbits(objects){
+        objects.forEach(recordOrbit);
+    }
+    function clearOrbits(objects){
+        objects.forEach(function(obj){
+            delete obj.orbit;
+        });
+    }
+    function recordOrbit(obj){
+        var currPos = Vector.newClone(obj.position);
+        
+        var orbit = obj.orbit;
+        if(!orbit){
+            orbit = obj.orbit = {
+                points: [currPos],
+                dir: null,
+                lastPos: currPos
+            };
+            return;
+        }
+
+        var dir = Vector.sub(currPos, orbit.lastPos);
+        var dist = Vector.length(dir);
+        if(dist < 1e-16){
+            return;
+        }
+        Vector.mul(1/dist, dir,  dir);
+
+        if(orbit.dir){
+            var x = Vector.dot(orbit.dir, dir);
+            var y = Vector.perpdot(orbit.dir, dir);
+            if(x < 0 || y > 0.1 || y < -0.1){
+                orbit.points.push(orbit.lastPos);
+                orbit.dir = dir;
+                if(orbit.points.length > MAX_ORBIT_POINTS){
+                    orbit.points.splice(0, orbit.points.length - MAX_ORBIT_POINTS);
+                }
+            }
+        }
+        else{
+            orbit.dir = dir;
+        }
+        orbit.lastPos = currPos;
+    }
+    
     // 全ての物体について、時間を進めます。
     function stepObjects(dt, objects, eps2, theta2, collisionEnabled)
     {

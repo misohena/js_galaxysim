@@ -8,6 +8,7 @@
 // TODO: timesliceやepsilon、Viewの状態もJSON保存する。
 // TODO: プリセット初期状態を充実させる。
 // TODO: スクリプトテンプレートを充実させる。
+// TODO: 軌道をちゃんと表示する。
 
 (function(){
     var mypkg = Misohena.package("Misohena", "galaxysim");
@@ -1236,6 +1237,8 @@
             c.startButton = HTML.button("Start/Stop"),
             c.visibleAxisCheckbox = HTML.checkbox(app.getView().getVisibleAxis()),
             "Axis",
+            c.visibleOrbitsCheckbox = HTML.checkbox(app.getView().getVisibleOrbits()),
+            "Orbit",
             c.enabledBlurCheckbox = HTML.checkbox(app.getView().getEnabledBlur()),
             "Blur",
             c.modeSelect = HTML.select(MODES.map(function(item){return item.title;})),
@@ -1252,7 +1255,9 @@
             c.thetaTextbox = HTML.textbox(""),
             HTML.br(),
             c.collisionCheckbox = HTML.checkbox(),
-            "Collision"
+            "Collision",
+            c.recordOrbitsCheckbox = HTML.checkbox(),
+            "Record Orbits"
         ]);
         this.getElement = function() { return controlDiv;};
 
@@ -1265,6 +1270,9 @@
         }, false);
         c.visibleAxisCheckbox.addEventListener("change", function(e){
             app.getView().setVisibleAxis(!app.getView().getVisibleAxis());
+        }, false);
+        c.visibleOrbitsCheckbox.addEventListener("change", function(e){
+            app.getView().setVisibleOrbits(!app.getView().getVisibleOrbits());
         }, false);
         c.enabledBlurCheckbox.addEventListener("change", function(e){
             app.getView().setEnabledBlur(!app.getView().getEnabledBlur());
@@ -1284,13 +1292,20 @@
         c.collisionCheckbox.addEventListener("click", function(e){
             app.getSpace().setCollisionEnabled(e.target.checked);
         }, false);
+        c.recordOrbitsCheckbox.addEventListener("click", function(e){
+            app.getSpace().setOrbitRecordingEnabled(e.target.checked);
+            app.getSpace().clearOrbitData();
+            c.visibleOrbitsCheckbox.disabled = !e.target.checked;
+        }, false);
 
         this.updateControls = function(){
+            c.visibleOrbitsCheckbox.checked = app.getView().getVisibleOrbits();
             c.enabledBlurCheckbox.checked = app.getView().getEnabledBlur();
             c.timesliceTextbox.value = app.getConductor().getTimeSlice();
             c.epsilonTextbox.value = app.getSpace().getEpsilon().toExponential();
             c.thetaTextbox.value = app.getSpace().getTheta();
             c.collisionCheckbox.checked = app.getSpace().getCollisionEnabled();
+            c.recordOrbitsCheckbox.checked = app.getSpace().getOrbitRecordingEnabled();
         }
         this.selectMode = function(index){
             c.modeSelect.selectedIndex = index;
@@ -1350,6 +1365,7 @@
                 state.viewX || DEFAULT_VIEW_X,
                 state.viewY || DEFAULT_VIEW_Y);
             view.setEnabledBlur(state.viewBlur === undefined ? true : state.viewBlur);
+            view.setVisibleOrbits(space.getOrbitRecordingEnabled());
             
             controlPanel.updateControls();
             controlPanel.selectMode(0); // if selectedIndex!=0 then call changeMode(0);
