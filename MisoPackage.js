@@ -1,4 +1,7 @@
 // -*- coding: utf-8 -*-
+//
+// Copyright (c) 2010 AKIYAMA Kouhei
+// Licensed under the MIT License.
 (function(){
     function getGlobalObject(){
         return this;

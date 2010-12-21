@@ -4,6 +4,9 @@
 // require Vector.js
 // require Space.js
 // require SpaceView.js
+//
+// Copyright (c) 2010 AKIYAMA Kouhei
+// Licensed under the MIT License.
 
 // TODO: スクリプトテンプレートを充実させる。
 

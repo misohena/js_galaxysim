@@ -1,4 +1,8 @@
 // -*- coding: utf-8 -*-
+//
+// Copyright (c) 2010 AKIYAMA Kouhei
+// Licensed under the MIT License.
+
 (function(){
     var mypkg = Misohena.package("Misohena", "galaxysim");
 

@@ -1,6 +1,9 @@
 // -*- coding: utf-8 -*-
 // require MisoPackage.js
 // require Vector*.js
+//
+// Copyright (c) 2010 AKIYAMA Kouhei
+// Licensed under the MIT License.
 
 (function(){
     var mypkg = Misohena.package("Misohena", "galaxysim");
