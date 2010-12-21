@@ -8,8 +8,6 @@
 // Copyright (c) 2010 AKIYAMA Kouhei
 // Licensed under the MIT License.
 
-// TODO: スクリプトテンプレートを充実させる。
-
 (function(){
     var mypkg = Misohena.package("Misohena", "galaxysim");
 
@@ -1242,6 +1240,61 @@
          "\n"+
          "  space.addObject(new SpaceObject(mass, radius, pos, vel));\n"+
          "}\n"
+        },
+        {title: "Lunar Orbit Injection",
+         code:
+         "var Vector = Misohena.galaxysim.Vector;\n"+
+         "var Space = Misohena.galaxysim.Space;\n"+
+         "var SpaceObject = Misohena.galaxysim.SpaceObject;\n"+
+         "\n"+
+         "Misohena.galaxysim.app.initSpace({\n"+
+         "    factory: function(){\n"+
+         "        var space = new Space();\n"+
+         "        space.setTrackRecordingEnabled(true);\n"+
+         "        space.setEpsilon(1);\n"+
+         "        space.setTheta(0.5);\n"+
+         "        space.setState({\n"+
+         "            objects:[\n"+
+         "                {name:\"Earth\", mass:5.9736e24,radius:6371000,pos:[0,0],vel:[0,0]},\n"+
+         "                {name:\"Moon\", mass:7.35e+22,radius:1737100,pos:[384400000,0],vel:[0,1022]},\n"+
+         "                {name:\"Probe\", mass:50000,radius:5,pos:[6371000,0],vel:[9000,4310]}\n"+
+         "            ],\n"+
+         "            eps:1,\n"+
+         "            dt:300});\n"+
+         "        \n"+
+         "        var probe = space.findObjectByName(\"Probe\");\n"+
+         "\n"+
+         "        var phase = 0;\n"+
+         "        space.addEventListener(\"step\", function(e){\n"+
+         "            switch(phase){\n"+
+         "            case 0:\n"+
+         "                // Time Slice Change\n"+
+         "                if(space.time > (3*24+0)*60*60){\n"+
+         "                    Misohena.galaxysim.app.setTimeSlice(60);\n"+
+         "                    ++phase;\n"+
+         "                }\n"+
+         "                break;\n"+
+         "            case 1:\n"+
+         "                // Lunar Orbit Injection\n"+
+         "                if(space.time > ((3*24+3)*60+30)*60){\n"+
+         "                    var speed = Vector.length(probe.velocity);\n"+
+         "                    var dir = Vector.mul(1.0/speed, probe.velocity);\n"+
+         "                    var deltaV = -500;\n"+
+         "                    Vector.addMul(probe.velocity, deltaV, dir,\n"+
+         "                                  probe.velocity);\n"+
+         "                    ++phase;\n"+
+         "                }\n"+
+         "                break;\n"+
+         "            }\n"+
+         "        });\n"+
+         "        \n"+
+         "        return space;\n"+
+         "    },\n"+
+         "    viewBlur:false,\n"+
+         "    dt:300,\n"+
+         "    scale:1e-9,\n"+
+         "});\n"+
+         "\n"
         },
     ];
     
