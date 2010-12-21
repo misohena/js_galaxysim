@@ -299,6 +299,7 @@
         }},
         {title:"Gravity Assisted Acc", factory:function(){
             var space = new Space();
+            space.setTrackRecordingEnabled(true);
             space.setEpsilon(1e2);
             space.addObject(new SpaceObject(
                 1.899e27, 142984000/2,
@@ -309,9 +310,10 @@
                 Vector.newXY(0, -3e10),
                 Vector.newXY(3800, 10000)));
             return space;
-        }, dt:3600*0.5, scale:2e-11},
-        {title:"Same Mass Passing", factory:function(){
+        }, dt:3600*0.5, scale:2e-11, viewBlur: false},
+        {title:"Two Bodies Same Mass", factory:function(){
             var space = new Space();
+            space.setTrackRecordingEnabled(true);
             space.setEpsilon(1e3);
             space.addObject(new SpaceObject(
                 1.899e27, 142984000/2,
@@ -322,7 +324,24 @@
                 Vector.newXY(0, -3e10),
                 Vector.newXY(3890+200, 10000)));
             return space;
-        }},
+        }, viewBlur: false},
+        {title:"Random 50(No Collision)", factory:function(){
+            var space = new Space();
+            space.setCollisionEnabled(false);
+            for(var i = 0; i < 50; ++i){
+                //var radius = 1e4 + Math.random() * 6.96e8;
+                //var mass = radius*radius*radius*1e3;
+                //var radius = 1e4 + Math.random() * 7e7;
+                var radius = 7e7;
+                var mass = radius*radius*radius*2000;
+                var pos = Vector.randomInCircle(1e9);
+                var vx = 0;//Math.random()*29780*(Math.random()<0.5 ? 1 : -1);
+                var vy = 0;//Math.random()*29780*(Math.random()<0.5 ? 1 : -1);
+                space.addObject(new SpaceObject(mass, radius, pos,
+                                                Vector.newXY(vx, vy)));
+            }
+            return space;
+        }, scale:5e-10},
         {title:"Random 100", factory:function(){
             var space = new Space();
             for(var i = 0; i < 100; ++i){
@@ -358,7 +377,27 @@
             }
             return space;
         }},
-        {title:"Galaxy", factory:function(){
+        {title:"Random 1000(No Collision)", factory:function(){
+            var space = new Space();
+            space.setCollisionEnabled(false);
+            for(var i = 0; i < 1000; ++i){
+                //var radius = 1e4 + Math.random() * 6.96e8;
+                //var mass = radius*radius*radius*1e3;
+                //var radius = 1e4 + Math.random() * 7e7;
+                var radius = 7e7;
+                var mass = radius*radius*radius*5536;
+                var pos = Vector.randomInCircle(8e10);
+                var vx = 0;//Math.random()*29780*(Math.random()<0.5 ? 1 : -1);
+                var vy = 0;//Math.random()*29780*(Math.random()<0.5 ? 1 : -1);
+                space.addObject(new SpaceObject(
+                    mass, radius,
+                    pos,
+                    Vector.newXY(vx, vy)
+                ));
+            }
+            return space;
+        }, viewBlur:false},
+        {title:"Expand Stars", factory:function(){
             var space = new Space();
             space.setCollisionEnabled(false);
             for(var i = 0; i < 1000; ++i){
