@@ -2,6 +2,7 @@
 // require MisoPackage.js
 // require Vector*.js
 // require Space.js
+// require Utility.js
 //
 // Copyright (c) 2010 AKIYAMA Kouhei
 // Licensed under the MIT License.
@@ -12,6 +13,7 @@
     // imports
     var Vector = mypkg.Vector;
     var Vector2D = mypkg.Vector2D;
+    var Util = mypkg.Util;
 
 
     /**
@@ -48,14 +50,16 @@
 
         // zoom by mouse wheel
         function zoomByMouseWheel(e){
+            var posArray = Util.getMousePosOnElement(cv, e);
+            var pos = Vector2D.newXY(posArray[0], posArray[1]);
             var delta = e.wheelDelta ? e.wheelDelta / 120
                 : e.detail ? e.detail / -3
                 : 0;
             if(delta < 0){
-                view.zoom(0.5);
+                view.zoom(0.5, pos);
             }
             else if(delta > 0){
-                view.zoom(2);
+                view.zoom(2, pos);
             }
             e.preventDefault();
         }
@@ -108,7 +112,17 @@
             }
             this.invalidateAndClear();
         },
-        zoom: function(s){
+        zoom: function(s, zoomCenter){
+            if(zoomCenter && !this.getTrackingTarget()){
+                var d = Vector2D.negateY(
+                    Vector2D.sub(
+                        zoomCenter,
+                        Vector2D.newXY(0.5*this.getCanvas().width, 0.5*this.getCanvas().height)));
+                this.setCenter(
+                    Vector2D.addMul(this.getCenter(),
+                                    (s-1)/(this.getScale()*s),
+                                    d));
+            }
             this.scale *= s;
             this.invalidateAndClear();
         },
