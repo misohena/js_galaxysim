@@ -23,7 +23,7 @@
         this.clearRequested = false;
         this.space = null;
         this.visibleAxis = false;
-        this.visibleOrbits = false;
+        this.visibleTrack = false;
         this.enabledBlur = true;
 
         this.extraPainter = null;
@@ -89,7 +89,7 @@
         getCenterX: function() { return Vector2D.getX(this.center);},
         getCenterY: function() { return Vector2D.getY(this.center);},
         getVisibleAxis: function() { return this.visibleAxis;},
-        getVisibleOrbits: function() { return this.visibleOrbits;},
+        getVisibleTrack: function() { return this.visibleTrack;},
         getEnabledBlur: function() { return this.enabledBlur;},
         getTrackingTargetRelative: function() { return this.trackingTargetRelative;},
         
@@ -136,8 +136,8 @@
             this.visibleAxis = b;
             this.invalidateAndClear();
         },
-        setVisibleOrbits: function(b){
-            this.visibleOrbits = b;
+        setVisibleTrack: function(b){
+            this.visibleTrack = b;
             this.invalidateAndClear();
         },
         setEnabledBlur: function(b){
@@ -175,8 +175,8 @@
             if(this.visibleAxis){
                 this.drawAxis();
             }
-            if(this.visibleOrbits){
-                this.drawOrbits();
+            if(this.visibleTrack){
+                this.drawObjectsTracks();
             }
             this.drawObjects();
             this.drawStatus();
@@ -246,17 +246,17 @@
                 ctx.fill();
             };
         },
-        drawOrbits: function(){
+        drawObjectsTracks: function(){
             var space = this.space;
-            if(!space.getOrbitRecordingEnabled()){
+            if(!space.getTrackRecordingEnabled()){
                 return;
             }
             for(var i = 0; i < space.objects.length; ++i){
-                this.drawOrbit(space.objects[i]);
+                this.drawTrack(space.objects[i]);
             }
         },
-        drawOrbit: function(obj){
-            if(obj.isDestroyed() || !obj.orbit){
+        drawTrack: function(obj){
+            if(obj.isDestroyed() || !obj.track){
                 return;
             }
 
@@ -442,38 +442,38 @@
                 this.addObjectPath(targetObj);
                 return;
             }
-            if(!targetObj.orbit || !originObj.orbit){
+            if(!targetObj.track || !originObj.track){
                 return;
             }
             var firstFrame = Math.max(
                 this.lastFrame,
-                targetObj.orbit.firstFrame,
-                originObj.orbit.firstFrame);
+                targetObj.track.firstFrame,
+                originObj.track.firstFrame);
             var lastFrame = Math.max(firstFrame, Math.min(
-                targetObj.orbit.firstFrame + targetObj.orbit.points.length,
-                originObj.orbit.firstFrame + originObj.orbit.points.length));
+                targetObj.track.firstFrame + targetObj.track.points.length,
+                originObj.track.firstFrame + originObj.track.points.length));
 
-            var ti = firstFrame - targetObj.orbit.firstFrame;
-            var oi = firstFrame - originObj.orbit.firstFrame;
+            var ti = firstFrame - targetObj.track.firstFrame;
+            var oi = firstFrame - originObj.track.firstFrame;
             for(var i = firstFrame; i < lastFrame; ++i, ++ti, ++oi){
-                this.addPos(Vector.sub(targetObj.orbit.points[ti], originObj.orbit.points[oi]));
+                this.addPos(Vector.sub(targetObj.track.points[ti], originObj.track.points[oi]));
             }
             this.lastFrame = lastFrame;
         },
         addObjectPath: function(targetObj){
-            if(!targetObj.orbit){
+            if(!targetObj.track){
                 return;
             }
             var firstFrame = Math.max(
                 this.lastFrame,
-                targetObj.orbit.firstFrame);
+                targetObj.track.firstFrame);
             var lastFrame = Math.max(
                 firstFrame,
-                targetObj.orbit.firstFrame + targetObj.orbit.points.length);
+                targetObj.track.firstFrame + targetObj.track.points.length);
 
-            var ti = firstFrame - targetObj.orbit.firstFrame;
+            var ti = firstFrame - targetObj.track.firstFrame;
             for(var i = firstFrame; i < lastFrame; ++i, ++ti){
-                this.addPos(Vector.newClone(targetObj.orbit.points[ti]));
+                this.addPos(Vector.newClone(targetObj.track.points[ti]));
             }
             this.lastFrame = lastFrame;
         },

@@ -248,7 +248,7 @@
                 {name:"Jupiter", mass:1.8986e27,radius:69911000,pos:[778412010000,0],vel:[0,13069.7]},
                 {name:"Saturn", mass:5.6846e26,radius:58232000,pos:[1426725400000,0],vel:[0,9672.4]},
                 {name:"Moon", mass:7.35e+22,radius:1737100,pos:[149982270000,0],vel:[0,30802]}
-            ],eps:100,theta:0.75,collisionEnabled:true, orbitRecordingEnabled:true
+            ],eps:100,theta:0.75,collisionEnabled:true, trackRecordingEnabled:true
         }, scale:5e-13, dt:21600, viewBlur:false},
         {title:"Earth to Venus",
          factory:function(){
@@ -265,7 +265,7 @@
                      {name:"Jupiter", mass:1.8986e27,radius:69911000,pos:[778412010000,0],vel:[0,13069.7]},
                      {name:"Saturn", mass:5.6846e26,radius:58232000,pos:[1426725400000,0],vel:[0,9672.4]},
                      {name:"Probe", mass:500,radius:3,pos:[149597870000,-6371000-2000],vel:[6410,29780-4200]}
-                 ],eps:1,theta:0.75,collisionEnabled:true, orbitRecordingEnabled: true
+                 ],eps:1,theta:0.75,collisionEnabled:true, trackRecordingEnabled: true
              });
              var phase = 0;
              space.addEventListener("step", function(e){
@@ -1218,8 +1218,8 @@
             c.startButton = HTML.button("Start/Stop"),
             c.visibleAxisCheckbox = HTML.checkbox(app.getView().getVisibleAxis()),
             "Axis",
-            c.visibleOrbitsCheckbox = HTML.checkbox(app.getView().getVisibleOrbits()),
-            "Orbit",
+            c.visibleTrackCheckbox = HTML.checkbox(app.getView().getVisibleTrack()),
+            "Track",
             c.enabledBlurCheckbox = HTML.checkbox(app.getView().getEnabledBlur()),
             "Blur",
             c.modeSelect = HTML.select(MODES.map(function(item){return item.title;})),
@@ -1237,8 +1237,8 @@
             HTML.br(),
             c.collisionCheckbox = HTML.checkbox(),
             "Collision",
-            c.recordOrbitsCheckbox = HTML.checkbox(),
-            "Record Orbits"
+            c.trackRecordingCheckbox = HTML.checkbox(),
+            "Record Track"
         ]);
         this.getElement = function() { return controlDiv;};
 
@@ -1252,8 +1252,8 @@
         c.visibleAxisCheckbox.addEventListener("change", function(e){
             app.getView().setVisibleAxis(!app.getView().getVisibleAxis());
         }, false);
-        c.visibleOrbitsCheckbox.addEventListener("change", function(e){
-            app.getView().setVisibleOrbits(!app.getView().getVisibleOrbits());
+        c.visibleTrackCheckbox.addEventListener("change", function(e){
+            app.getView().setVisibleTrack(!app.getView().getVisibleTrack());
         }, false);
         c.enabledBlurCheckbox.addEventListener("change", function(e){
             app.getView().setEnabledBlur(!app.getView().getEnabledBlur());
@@ -1273,20 +1273,20 @@
         c.collisionCheckbox.addEventListener("click", function(e){
             app.getSpace().setCollisionEnabled(e.target.checked);
         }, false);
-        c.recordOrbitsCheckbox.addEventListener("click", function(e){
-            app.getSpace().setOrbitRecordingEnabled(e.target.checked);
-            c.visibleOrbitsCheckbox.disabled = !e.target.checked;
+        c.trackRecordingCheckbox.addEventListener("click", function(e){
+            app.getSpace().setTrackRecordingEnabled(e.target.checked);
+            c.visibleTrackCheckbox.disabled = !e.target.checked;
         }, false);
 
         this.updateControls = function(){
-            c.visibleOrbitsCheckbox.checked = app.getView().getVisibleOrbits();
+            c.visibleTrackCheckbox.checked = app.getView().getVisibleTrack();
             c.enabledBlurCheckbox.checked = app.getView().getEnabledBlur();
             c.timesliceTextbox.value = app.getConductor().getTimeSlice();
             c.epsilonTextbox.value = app.getSpace().getEpsilon().toExponential();
             c.thetaTextbox.value = app.getSpace().getTheta();
             c.collisionCheckbox.checked = app.getSpace().getCollisionEnabled();
-            c.recordOrbitsCheckbox.checked = app.getSpace().getOrbitRecordingEnabled();
-            c.visibleOrbitsCheckbox.disabled = !c.recordOrbitsCheckbox.checked;
+            c.trackRecordingCheckbox.checked = app.getSpace().getTrackRecordingEnabled();
+            c.visibleTrackCheckbox.disabled = !c.trackRecordingCheckbox.checked;
         }
         this.selectMode = function(index){
             c.modeSelect.selectedIndex = index;
@@ -1346,7 +1346,7 @@
                 state.viewX || DEFAULT_VIEW_X,
                 state.viewY || DEFAULT_VIEW_Y);
             view.setEnabledBlur(state.viewBlur === undefined ? true : state.viewBlur);
-            view.setVisibleOrbits(space.getOrbitRecordingEnabled());
+            view.setVisibleTrack(space.getTrackRecordingEnabled());
             
             controlPanel.updateControls();
             controlPanel.selectMode(0); // if selectedIndex!=0 then call changeMode(0);
