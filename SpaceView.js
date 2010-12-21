@@ -310,6 +310,10 @@
             
             var statusText = "objects:"+space.objects.length +
                 " time:"+toElapsedTimeString(space.time);
+            var tobj = this.getTrackingTarget();
+            if(tobj){
+                statusText += "  tracking to:"+tobj.getName();
+            }
             ctx.fillStyle = "#004080";
             ctx.fillRect(0, 0, ctx.measureText(statusText).width, 16);
             ctx.fillStyle = "rgb(255,255,255)";
