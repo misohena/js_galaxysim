@@ -259,24 +259,35 @@
             if(obj.isDestroyed() || !obj.orbit){
                 return;
             }
-            var ctx = this.getContext2D();
-            var pos = Vector.newZero();
 
-            ctx.strokeStyle = "#505050";
-            ctx.beginPath();
-            
-            this.convertSpaceToCanvas(obj.orbit.points[0], pos);
-            ctx.moveTo(Vector.getX(pos), Vector.getY(pos));
-            
-            for(var i = 1; i < obj.orbit.points.length; ++i){
-                this.convertSpaceToCanvas(obj.orbit.points[i], pos);
-                ctx.lineTo(Vector.getX(pos), Vector.getY(pos));
+            // update path
+            if(!obj.view){
+                obj.view = {};
             }
+            if(!obj.view.path){
+                obj.view.path = new SpaceObjectSimplifiedPath();
+            }
+            var path = obj.view.path;
+            path.addObjectPath(obj);
 
-            this.convertSpaceToCanvas(obj.position, pos);
-            ctx.lineTo(Vector.getX(pos), Vector.getY(pos));
+            // draw path
+            if(path.points.length > 0){
+                var ctx = this.getContext2D();
+                var pos = Vector.newZero();
 
-            ctx.stroke();
+                ctx.strokeStyle = "#505050";
+                ctx.beginPath();
+            
+                this.convertSpaceToCanvas(path.points[0], pos);
+                ctx.moveTo(Vector.getX(pos), Vector.getY(pos));
+                
+                for(var i = 1; i < path.points.length; ++i){
+                    this.convertSpaceToCanvas(path.points[i], pos);
+                    ctx.lineTo(Vector.getX(pos), Vector.getY(pos));
+                }
+
+                ctx.stroke();
+            }
         },
         drawStatus: function(){
             var cv = this.getCanvas();
@@ -416,7 +427,91 @@
         }
     };
 
+    /**
+     * class SpaceObjectSimplifiedPath
+     */
+    function SpaceObjectSimplifiedPath(){
+        this.points = [];
+        this.lastDir = null;
+        this.lastFrame = 0;
+    }
+    SpaceObjectSimplifiedPath.MAX_POINTS = 200;
+    SpaceObjectSimplifiedPath.prototype = {
+        addObjectPathRelative: function(targetObj, originObj){
+            if(!originObj){
+                this.addObjectPath(targetObj);
+                return;
+            }
+            if(!targetObj.orbit || !originObj.orbit){
+                return;
+            }
+            var firstFrame = Math.max(
+                this.lastFrame,
+                targetObj.orbit.firstFrame,
+                originObj.orbit.firstFrame);
+            var lastFrame = Math.max(firstFrame, Math.min(
+                targetObj.orbit.firstFrame + targetObj.orbit.points.length,
+                originObj.orbit.firstFrame + originObj.orbit.points.length));
 
+            var ti = firstFrame - targetObj.orbit.firstFrame;
+            var oi = firstFrame - originObj.orbit.firstFrame;
+            for(var i = firstFrame; i < lastFrame; ++i, ++ti, ++oi){
+                this.addPos(Vector.sub(targetObj.orbit.points[ti], originObj.orbit.points[oi]));
+            }
+            this.lastFrame = lastFrame;
+        },
+        addObjectPath: function(targetObj){
+            if(!targetObj.orbit){
+                return;
+            }
+            var firstFrame = Math.max(
+                this.lastFrame,
+                targetObj.orbit.firstFrame);
+            var lastFrame = Math.max(
+                firstFrame,
+                targetObj.orbit.firstFrame + targetObj.orbit.points.length);
+
+            var ti = firstFrame - targetObj.orbit.firstFrame;
+            for(var i = firstFrame; i < lastFrame; ++i, ++ti){
+                this.addPos(Vector.newClone(targetObj.orbit.points[ti]));
+            }
+            this.lastFrame = lastFrame;
+        },
+        
+        addPos: function(currPos) {
+            if(this.points.length <= 0){
+                this.points.push(currPos);
+            }
+            else{
+                var lastPos = this.points[this.points.length-1];
+                var dir = Vector.sub(currPos, lastPos);
+                var dist = Vector.length(dir);
+                if(dist < 1e-16){ ///@todo
+                    return;
+                }
+                Vector.mul(1/dist, dir,  dir);
+
+                if(!this.lastDir || !isSameDirection(this.lastDir, dir)){
+                    this.points.push(currPos);
+                    this.lastDir = dir;
+                    var d = this.points.length - SpaceObjectSimplifiedPath.MAX_POINTS;
+                    if(d > 0){
+                        this.points.splice(0, d);
+                    }
+                }
+                else{
+                    this.points[this.points.length-1] = currPos;
+                }
+            }
+        },
+    };
+    function isSameDirection(a, b){
+        var x = Vector.dot(a, b);
+        var y = Vector.perpdot(a, b);
+        return (x >= 0 && y < 0.1 && y > -0.1); ///@todo
+    }
+    
+    
     // Utilities
     
     function toElapsedTimeString(t)
