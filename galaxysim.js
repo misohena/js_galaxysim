@@ -1285,6 +1285,7 @@
 
         this.updateControls = function(){
             c.visibleTrackCheckbox.checked = app.getView().getVisibleTrack();
+            c.relativePlottingCheckbox.checked = app.getView().getRelativePlotting();
             c.enabledBlurCheckbox.checked = app.getView().getEnabledBlur();
             c.timesliceTextbox.value = app.getConductor().getTimeSlice();
             c.epsilonTextbox.value = app.getSpace().getEpsilon().toExponential();
@@ -1351,6 +1352,7 @@
                 state.viewX || DEFAULT_VIEW_X,
                 state.viewY || DEFAULT_VIEW_Y);
             view.setEnabledBlur(state.viewBlur === undefined ? true : state.viewBlur);
+            view.setRelativePlotting(state.viewRelativePlotting === undefined ? false : state.viewRelativePlotting);
             view.setVisibleTrack(space.getTrackRecordingEnabled());
             
             controlPanel.updateControls();
