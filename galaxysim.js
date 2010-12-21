@@ -5,7 +5,6 @@
 // require Space.js
 // require SpaceView.js
 
-// TODO: プリセット初期状態を充実させる。
 // TODO: スクリプトテンプレートを充実させる。
 
 (function(){
@@ -413,7 +412,7 @@
             }
             return space;
         }, viewBlur:false, scale:2e-11, dt:1800},
-        {title:"Empty", factory:function(){return new Space();}},
+        {title:"Empty(for Editing Mode)", factory:function(){return new Space();}},
     ];
 
 
