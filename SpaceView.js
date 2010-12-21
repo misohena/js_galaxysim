@@ -28,7 +28,7 @@
 
         this.extraPainter = null;
         this.tracker = null;
-        this.trackingTargetRelative = false;
+        this.relativePlotting = false;
         
         this.onSpaceObjectChanged = function(e){ view.invalidate();};
         
@@ -91,7 +91,7 @@
         getVisibleAxis: function() { return this.visibleAxis;},
         getVisibleTrack: function() { return this.visibleTrack;},
         getEnabledBlur: function() { return this.enabledBlur;},
-        getTrackingTargetRelative: function() { return this.trackingTargetRelative;},
+        getRelativePlotting: function() { return this.relativePlotting;},
         
         setSpace: function(space){
             this.setTrackingTarget(null); //release Tracking Mode
@@ -144,9 +144,10 @@
             this.enabledBlur = b;
             this.invalidateAndClear();
         },
-        setTrackingTargetRelative: function(b){
-            this.trackingTargetRelative = b;
+        setRelativePlotting: function(b){
+            this.relativePlotting = b;
             this.invalidateAndClear();
+            this.clearObjectsTracks();
         },
 
         setExtraPainter: function(painter){
@@ -255,34 +256,47 @@
                 this.drawTrack(space.objects[i]);
             }
         },
+        clearObjectsTracks: function(){
+            var space = this.space;
+            if(space){
+                for(var i = 0; i < space.objects.length; ++i){
+                    var obj = space.objects[i];
+                    if(obj.viewData && obj.viewData.path){
+                        delete obj.viewData.path;
+                    }
+                }
+            }
+        },
         drawTrack: function(obj){
             if(obj.isDestroyed() || !obj.track){
                 return;
             }
 
             // update path
-            if(!obj.view){
-                obj.view = {};
+            if(!obj.viewData){
+                obj.viewData = {};
             }
-            if(!obj.view.path){
-                obj.view.path = new SpaceObjectSimplifiedPath();
+            if(!obj.viewData.path){
+                obj.viewData.path = new SpaceObjectSimplifiedPath();
             }
-            var path = obj.view.path;
-            path.addObjectPath(obj);
+            var path = obj.viewData.path;
+            var originObj = this.getRelativePlotting() ? this.getTrackingTarget() : null;
+            path.addObjectPathRelative(obj, originObj);
 
             // draw path
             if(path.points.length > 0){
                 var ctx = this.getContext2D();
-                var pos = Vector.newZero();
+                var pos = Vector2D.newZero();
+                var origin = originObj ? originObj.position : Vector.newZero();
 
                 ctx.strokeStyle = "#505050";
                 ctx.beginPath();
             
-                this.convertSpaceToCanvas(path.points[0], pos);
+                this.convertSpaceRelToCanvas(path.points[0], origin, pos);
                 ctx.moveTo(Vector.getX(pos), Vector.getY(pos));
                 
                 for(var i = 1; i < path.points.length; ++i){
-                    this.convertSpaceToCanvas(path.points[i], pos);
+                    this.convertSpaceRelToCanvas(path.points[i], origin, pos);
                     ctx.lineTo(Vector.getX(pos), Vector.getY(pos));
                 }
 
@@ -338,6 +352,26 @@
             return null;
         },
 
+        convertSpaceRelToCanvas: function(spacePos, origin, dst){
+            var cv = this.getCanvas();
+            var scale = this.getScale();
+            var viewX = this.getCenterX();
+            var viewY = this.getCenterY();
+
+            if(dst){
+                Vector.setXY(
+                    dst,
+                    0.5*cv.width  + (Vector.getX(spacePos) + Vector.getX(origin) - viewX) * scale,
+                    0.5*cv.height - (Vector.getY(spacePos) + Vector.getY(origin) - viewY) * scale);
+                return dst;
+            }
+            else{
+                return Vector2D.newXY(
+                    0.5*cv.width  + (Vector.getX(spacePos) + Vector.getX(origin) - viewX) * scale,
+                    0.5*cv.height - (Vector.getY(spacePos) + Vector.getY(origin) - viewY) * scale);
+            }
+        },
+
         convertSpaceToCanvas: function(spacePos, dst){
             var cv = this.getCanvas();
             var scale = this.getScale();
@@ -364,6 +398,7 @@
                 this.tracker = null;
                 this.invalidateAndClear();
             }
+            this.clearObjectsTracks();
             if(obj){
                 this.tracker = new SpaceView.ObjectTracker(
                     this.getSpace(),

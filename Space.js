@@ -13,7 +13,7 @@
     var DEFAULT_EPS = 1e9;
     var DEFAULT_THETA = 0.75;
 
-    var MAX_RECORDING_TRACK_POINTS = 1000;
+    var MAX_RECORDING_TRACK_POINTS = 10000;
 
     /**
      * class EventDispatcher

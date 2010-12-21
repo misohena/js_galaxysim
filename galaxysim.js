@@ -1220,6 +1220,8 @@
             "Axis",
             c.visibleTrackCheckbox = HTML.checkbox(app.getView().getVisibleTrack()),
             "Track",
+            c.relativePlottingCheckbox = HTML.checkbox(app.getView().getRelativePlotting()),
+            "Relative",
             c.enabledBlurCheckbox = HTML.checkbox(app.getView().getEnabledBlur()),
             "Blur",
             c.modeSelect = HTML.select(MODES.map(function(item){return item.title;})),
@@ -1254,6 +1256,9 @@
         }, false);
         c.visibleTrackCheckbox.addEventListener("change", function(e){
             app.getView().setVisibleTrack(!app.getView().getVisibleTrack());
+        }, false);
+        c.relativePlottingCheckbox.addEventListener("change", function(e){
+            app.getView().setRelativePlotting(!app.getView().getRelativePlotting());
         }, false);
         c.enabledBlurCheckbox.addEventListener("change", function(e){
             app.getView().setEnabledBlur(!app.getView().getEnabledBlur());
