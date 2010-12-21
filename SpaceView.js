@@ -351,14 +351,14 @@
             if(this.tracker){
                 this.tracker.cancel();
                 this.tracker = null;
-                view.invalidateAndClear();
+                this.invalidateAndClear();
             }
             if(obj){
                 this.tracker = new SpaceView.ObjectTracker(
                     this.getSpace(),
                     obj,
                     this);
-                view.invalidateAndClear();
+                this.invalidateAndClear();
             }
         },
         getTrackingTarget: function(){
