@@ -248,7 +248,7 @@
                 {name:"Jupiter", mass:1.8986e27,radius:69911000,pos:[778412010000,0],vel:[0,13069.7]},
                 {name:"Saturn", mass:5.6846e26,radius:58232000,pos:[1426725400000,0],vel:[0,9672.4]},
                 {name:"Moon", mass:7.35e+22,radius:1737100,pos:[149982270000,0],vel:[0,30802]}
-            ],eps:100,theta:0.75,collisionEnabled:true, trackRecordingEnabled:true
+            ],eps:100,theta:0.70,collisionEnabled:true, trackRecordingEnabled:true
         }, scale:5e-13, dt:21600, viewBlur:false},
         {title:"Earth to Venus",
          factory:function(){
@@ -265,7 +265,7 @@
                      {name:"Jupiter", mass:1.8986e27,radius:69911000,pos:[778412010000,0],vel:[0,13069.7]},
                      {name:"Saturn", mass:5.6846e26,radius:58232000,pos:[1426725400000,0],vel:[0,9672.4]},
                      {name:"Probe", mass:500,radius:3,pos:[149597870000,-6371000-2000],vel:[6410,29780-4200]}
-                 ],eps:1,theta:0.75,collisionEnabled:true, trackRecordingEnabled: true
+                 ],eps:1,theta:0.70,collisionEnabled:true, trackRecordingEnabled: true
              });
              var phase = 0;
              space.addEventListener("step", function(e){
@@ -1252,7 +1252,6 @@
          "        var space = new Space();\n"+
          "        space.setTrackRecordingEnabled(true);\n"+
          "        space.setEpsilon(1);\n"+
-         "        space.setTheta(0.5);\n"+
          "        space.setState({\n"+
          "            objects:[\n"+
          "                {name:\"Earth\", mass:5.9736e24,radius:6371000,pos:[0,0],vel:[0,0]},\n"+
