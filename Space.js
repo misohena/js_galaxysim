@@ -14,7 +14,7 @@
     // Constants
     var G = 6.67259e-11;
     var DEFAULT_EPS = 1e9;
-    var DEFAULT_THETA = 0.75;
+    var DEFAULT_THETA = 0.70; // less 1/sqrt(2)
 
     var MAX_RECORDING_TRACK_POINTS = 10000;
 
