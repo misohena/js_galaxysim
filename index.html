@@ -20,6 +20,19 @@
       <li>矢印をドラッグ : EditMode => 物体の速度を変更</li>
     </ul>
 
+    <h2>コントロールの意味</h2>
+    <ul>
+      <li>Axis : グローバル座標での座標軸を表示する。</li>
+      <li>Track : 物体の軌跡を表示する。ただし、Record Trackがチェックされていなければ意味なし。</li>
+      <li>Relative : 物体の軌跡を現在追跡している物体を基準にプロットする。ただし、Trackがチェックされていないときや物体を追跡していないときは意味なし。</li>
+      <li>Blur : 画面更新時に前の図を完全に消さずに少し残す。沢山の物体の軌跡を記録・表示すると重くなるので、そのようなときに使う。</li>
+      <li>time slice : シミュレーションの時間刻み。小さい方が正確だが、進行が遅くなる。</li>
+      <li>epsilon : 物体同士が接近したときに計算結果が発散するのを防ぐための数値。小さい方が物理法則に忠実になるが、物体同士が極々接近したときの計算結果が破綻しがち。</li>
+      <li>theta : 重力の計算をどの程度簡略化するかの数値。0が最も正確だが遅い。</li>
+      <li>Collision : 衝突処理をする。物体が互いの半径の和以上に接近したとき、二つの物体を一つにまとめる処理を行う。</li>
+      <li>Record Track : 全物体の位置の履歴を記録する。</li>
+    </ul>
+
     <h2>ソースコード</h2>
     <dl>
       <dt><a href="galaxysim.html">galaxysim.html</a></dt>
@@ -73,6 +86,6 @@ THE SOFTWARE.</p>
 
     <hr>
     <address>AKIYAMA Kouhei (Gmail: misohena / Twitter: ak10i)</address>
-    <div><!-- ts start -->Last modified: 2010-12-21 16:12:35+0900<!-- ts end --></div>
+    <div><!-- ts start -->Last modified: 2010-12-22 14:32:05+0900<!-- ts end --></div>
   </body>
 </html>
