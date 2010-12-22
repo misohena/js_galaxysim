@@ -491,7 +491,7 @@
         this.lastDir = null;
         this.lastFrame = 0;
     }
-    SpaceObjectSimplifiedPath.MAX_POINTS = 500;
+    SpaceObjectSimplifiedPath.MAX_POINTS = 1000;
     SpaceObjectSimplifiedPath.prototype = {
         addObjectPathRelative: function(targetObj, originObj){
             if(!originObj){
