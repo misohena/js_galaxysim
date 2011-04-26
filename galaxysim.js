@@ -420,7 +420,7 @@
                     if(!stroke.downObj){
                         releaseCurrentEditTarget();
                     }
-                },
+                }//,
             });
 
         // Current Edit Target
@@ -539,7 +539,7 @@
                 isPositionOnHeadArrow: isPositionOnHeadArrow,
                 drawVelArrow: drawVelArrow,
                 getObject: function() { return obj;},
-                setVelocity: setVelocity,
+                setVelocity: setVelocity//,
             };
         }
         

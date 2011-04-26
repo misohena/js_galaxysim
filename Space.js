@@ -101,7 +101,7 @@
                 mass: this.mass,
                 radius: this.radius,
                 pos: this.position,
-                vel: this.velocity,
+                vel: this.velocity//,
             };
             if(this.name){
                 s.name = this.name;
@@ -160,7 +160,7 @@
 
         dispatchRemoveEvent: function(){
             this.dispatchEvent({type:"removefromspace", target:this});
-        },
+        }//,
     };
     EventDispatcher.addMethodTo(SpaceObject.prototype);
 
@@ -364,7 +364,7 @@
                 eps: this.eps,
                 theta: this.theta,
                 collisionEnabled: this.collisionEnabled,
-                trackRecordingEnabled: this.trackRecordingEnabled,
+                trackRecordingEnabled: this.trackRecordingEnabled//,
             };
         },
         setState: function(state){

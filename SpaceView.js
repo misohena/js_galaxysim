@@ -559,7 +559,7 @@
                     this.points[this.points.length-1] = currPos;
                 }
             }
-        },
+        }//,
     };
     function isSameDirection(a, b){
         var x = Vector.dot(a, b);
