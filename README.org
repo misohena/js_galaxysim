@@ -3,9 +3,11 @@
 
 二次元平面上に散らばった丸が互いに重力によって引かれていく様をシミュレーションするプログラムです。
 
+[[https://raw.github.com/misohena/js_galaxysim/master/sample_small.png]]
+
 ** 使い方
 
-ブラウザで[[galaxysim.html]]を開いてください。
+ブラウザで [[http://misohena.jp/art/js_galaxysim/galaxysim.html][galaxysim.html]] を開いてください。
 
 「Start/Stop」を押すとシミュレーションが開始したり停止したりします。
 
