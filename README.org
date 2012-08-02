@@ -1,3 +1,98 @@
-* ファイルの説明
+* JavaScript重力多体シミュレータ(2D)
+** 概要
 
-[[galaxysim.html]]
+二次元平面上に散らばった丸が互いに重力によって引かれていく様をシミュレーションするプログラムです。
+
+** 使い方
+
+ブラウザで[[galaxysim.html]]を開いてください。
+
+「Start/Stop」を押すとシミュレーションが開始したり停止したりします。
+
+左側にあるリストから一つを選んでから「Init」ボタンを押すと、いくつかのサンプルをロードすることが出来ます。
+
+右側にあるリストを「View Mode」から「Edit Mode」にすると、物体を自由に追加、削除、編集することが出来ます。
+
+自分で書いたJavaScriptのプログラムによって、物体を生成することも可能です。
+
+*** マウス操作
+
+基本操作
+
+| 操作           | 意味       |
+|----------------+------------|
+| マウスホイール | ズーム     |
+| ドラッグ       | スクロール |
+
+
+ViewMode
+
+| 操作           | 意味       |
+|----------------+------------|
+| 物体をクリック | 物体を追跡 |
+
+EditMode
+
+| 操作           | 意味                                 |
+|----------------+--------------------------------------|
+| 物体をクリック | 物体を選択、プロパティウィンドウ表示 |
+| 物体をドラッグ | 物体を移動                           |
+| 矢印をドラッグ | 物体の速度を変更                     |
+
+*** コントロールの意味
+
+- Axis :: グローバル座標での座標軸を表示する。
+- Track :: 物体の軌跡を表示する。ただし、Record Trackがチェックされていなければ意味なし。
+- Relative :: 物体の軌跡を現在追跡している物体を基準にプロットする。ただし、Trackがチェックされていないときや物体を追跡していないときは意味なし。
+- Blur :: 画面更新時に前の図を完全に消さずに少し残す。沢山の物体の軌跡を記録・表示すると重くなるので、そのようなときに使う。
+- time slice :: シミュレーションの時間刻み。小さい方が正確だが、進行が遅くなる。
+- epsilon :: 物体同士が接近したときに計算結果が発散するのを防ぐための数値。小さい方が物理法則に忠実になるが、物体同士が極々接近したときの計算結果が破綻しがち。
+- theta :: 重力の計算をどの程度簡略化するかの数値。0が最も正確だが遅い。
+- Collision :: 衝突処理をする。物体が互いの半径の和以上に接近したとき、二つの物体を一つにまとめる処理を行う。
+- Record Track :: 全物体の位置の履歴を記録する。
+
+** ソースコード
+*** 最新版
+
+最新のソースコードは [[https://github.com/misohena/js_galaxysim][github]] で公開しています。
+
+*** ファイルの説明
+
+- galaxysim.html :: メインのHTML。Misohena.galaxysim.main(galaxysim.js内)を呼ぶだけ。
+- galaxysim.css :: ウィンドウや入力欄の見た目を指定。
+- galaxysim.js :: 主にUIまわり。App、AppControlPanl、ViewMode、EditMode、EditModeWindow、ScriptEditorWindow、SavedStateWindow、ObjectPropertyWindow、Conductorといったクラス(のようなもの)を定義。ConductorはUIではなくシミュレーションの進行役で、タイマーを持ちSpaceオブジェクトへ時間進行の指示を出す。
+- Presets.js :: プリセットの初期状態やスクリプトテンプレート。何か追加したいときはこのファイルをいじればOK。
+- SpaceView.js :: 左上のcanvas要素まわり。Spaceオブジェクトの内容を表示するSpaceViewクラスを定義する。
+- Space.js :: シミュレーションまわり。SpaceとSpaceObjectクラスを定義する。
+- VectorArray.js :: ベクトル計算ライブラリ。要素数2のJavaScript配列を二次元ベクトルと見なして処理する。{x:1, y:0}のようなJavaScriptオブジェクトをベースとしたVectorObject.jsも作ってみたが、速度はやはり配列の方が良さそうだった。ただ、Firefox3.6においてメモリ使用量はオブジェクトベースの方が少なかった。将来、三次元へ切り替えたときにコードの修正ができるだけ少なくなるようなことも考慮している。ただ、このライブラリを通していることで直接計算するよりも多少速度が落ちていることは否めない。
+- Utility.js :: JavaScript言語やDOM APIに対する細々としたライブラリ。過去のプロジェクトからのコピーなので、使っていないものが多く含まれているかも。
+- MisoPackage.js :: Javaのpackageのようなものを実現するだけのライブラリ。今回のコードは全てMisohena.galaxysimの中に入れた。
+- JavaScriptExtension.js :: 最近のJavaScript言語規格にあるメソッドを確実に使えるようにするライブラリ。
+
+** ライセンス
+
+本ソフトウェアはMITライセンスに基づき自由に使用することが出来ます。改造してご自分のサイトで何かの説明に利用するなど、ご自由にどうぞ。
+
+Copyright (c) 2010 AKIYAMA Kouhei
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+** 参考文献
+
+- [[http://www.artcompsci.org/~makino/kougi/keisan_tenmongakuII/index.html][計算天文学 II - 牧野淳一郎]]
