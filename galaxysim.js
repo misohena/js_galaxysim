@@ -209,10 +209,10 @@
         
         win.getElement = function(){
             return windowDiv;
-        }
+        };
         win.getCaptionElement = function(){
             return captionDiv;
-        }
+        };
         win.setCaptionText = function(str){
             captionText.nodeValue = str;
         };
@@ -609,27 +609,27 @@
         var c = {};
         Window.call(this, null, [
             HTML.div(null, [
-                "Mass(kg): ", c.textboxMass = HTML.textbox(),
+                "Mass(kg): ", c.textboxMass = HTML.textbox()
             ]),
             HTML.div(null, [
-                "Radius(m): ", c.textboxRadius = HTML.textbox(),
+                "Radius(m): ", c.textboxRadius = HTML.textbox()
             ]),
             HTML.div(null, [
                 "Position(m): ",
                 " X", c.textboxPositionX = HTML.textbox(),
-                " Y", c.textboxPositionY = HTML.textbox(),
+                " Y", c.textboxPositionY = HTML.textbox()
             ]),
             HTML.div(null, [
                 "Velocity(m/s): ",
                 " X", c.textboxVelocityX = HTML.textbox(),
                 " Y", c.textboxVelocityY = HTML.textbox(), HTML.br(),
                 " Direction(deg): ", c.textboxDirection = HTML.textbox(), HTML.br(),
-                " Speed(m/s): ", c.textboxSpeed = HTML.textbox(),
+                " Speed(m/s): ", c.textboxSpeed = HTML.textbox()
             ]),
             HTML.div({className: "footer"}, [
                 c.buttonApply = HTML.button("Apply"),
-                c.buttonClose = HTML.button("Close"),
-            ]),
+                c.buttonClose = HTML.button("Close")
+            ])
         ]);
         this.getCaptionElement().appendChild(HTML.div(null, [
             c.buttonDelete = HTML.button("Delete"),
@@ -660,7 +660,7 @@
                  return Vector.length(o.velocity);},
              settor:function(o, v){
                  var speed = Vector.length(o.velocity);
-                 if(speed > 0){Vector.mul(v/speed, o.velocity, o.velocity);}}},
+                 if(speed > 0){Vector.mul(v/speed, o.velocity, o.velocity);}}}
         ];
         function updateElements(){
             if(!targetObject){ return; }
@@ -867,7 +867,7 @@
             c.buttonAddObject = HTML.button("Add Object"),
             c.buttonScript = HTML.button("Script"),
             c.buttonSaveStateToJSON = HTML.button("Save State to JSON"),
-            c.buttonLoadStateFromJSON = HTML.button("Load State from JSON"),
+            c.buttonLoadStateFromJSON = HTML.button("Load State from JSON")
         ]);
         this.setCaptionText("Edit Mode");
 
@@ -925,8 +925,8 @@
             c.data = HTML.textarea(data, {rows:4, cols:40}),
             HTML.div({className:"footer"}, [
                 c.load = HTML.button("Load"),
-                c.close = HTML.button("Close"),
-            ]),
+                c.close = HTML.button("Close")
+            ])
         ]);
         win.setCaptionText(caption);
         win.setPosition(Vector2D.getX(pos), Vector2D.getY(pos));
@@ -957,13 +957,13 @@
         Window.call(this, null, [
             HTML.div(null, [
                 c.selectTemplate = HTML.select(Presets.SCRIPT_TEMPLATES.map(function(t){return t.title;})),
-                c.loadTemplate = HTML.button("Load"),
+                c.loadTemplate = HTML.button("Load")
             ]),
             c.code = HTML.textarea("", {rows:15, cols:60}),
             HTML.div({className:"footer"}, [
                 c.run = HTML.button("Run"),
-                c.close = HTML.button("Close"),
-            ]),
+                c.close = HTML.button("Close")
+            ])
         ]);
 
         c.close.addEventListener("click", function(){
@@ -1101,10 +1101,10 @@
             c.collisionCheckbox.checked = app.getSpace().getCollisionEnabled();
             c.trackRecordingCheckbox.checked = app.getSpace().getTrackRecordingEnabled();
             c.visibleTrackCheckbox.disabled = !c.trackRecordingCheckbox.checked;
-        }
+        };
         this.selectMode = function(index){
             c.modeSelect.selectedIndex = index;
-        }
+        };
     }
     
     /**
@@ -1170,7 +1170,7 @@
 
             ///@todo EditModeに入ったときに設定すべきかも。しかし、EditModeを終わっても開きっぱなしにできるので、ここで設定する必要がある。EditModeを終わっても開きっぱなしにできるのは、書いたコードを失いにくくするため。理想を言えばアプリケーションのspace属性の変更を監視してScriptEditorWindowが自動的に設定を変えるべき。ただ、これだけのためにイベント通知機構を追加するのもね。
             ScriptEditorWindow.getGlobalWindow().setSpaceAndView(space, view);
-        }
+        };
 
         initSpace(Presets.INITIAL_STATES[0]);
 

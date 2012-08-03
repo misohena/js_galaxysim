@@ -389,7 +389,7 @@
             if(state.objects !== undefined){
                 for(var oi = 0; oi < state.objects.length; ++oi){
                     var os = state.objects[oi];
-                    var o = new SpaceObject(os.mass, os.radius, os.pos, os.vel)
+                    var o = new SpaceObject(os.mass, os.radius, os.pos, os.vel);
                     if(os.name){
                         o.setName(os.name);
                     }
@@ -541,7 +541,7 @@
             Vector.setZero(obj.acceleration);
             obj.phi = obj.mass / Math.sqrt(eps2);
             rootNode.accumulateGravityToObject(obj, eps2, theta2);
-            Vector.mul(G, obj.acceleration,  obj.acceleration); //ここでGを掛けた方が実行効率はよいが、invR3〜のところで掛けた方がaccelerationの意味(単位)が明確かもしれない。
+            Vector.mul(G, obj.acceleration,  obj.acceleration); //ここでGを掛けた方が実行効率はよいが、invR3～のところで掛けた方がaccelerationの意味(単位)が明確かもしれない。
         }
             
         // detect collision

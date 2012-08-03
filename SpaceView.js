@@ -477,10 +477,10 @@
         this.cancel = function(){
             changeTrackingTarget(null);
             space.removeEventListener("step", scrollView);
-        }
+        };
         this.getTarget = function(){
             return trackingTarget;
-        }
+        };
     };
 
     /**

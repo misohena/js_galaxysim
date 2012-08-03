@@ -205,7 +205,7 @@
         }, viewBlur:false, scale:2e-11, dt:1800},
 
         
-        {title:"Empty(for Editing Mode)", factory:function(){return new Space();}},
+        {title:"Empty(for Editing Mode)", factory:function(){return new Space();}}
     ];
 
 
@@ -315,7 +315,7 @@
          "    scale:1e-9,\n"+
          "});\n"+
          "\n"
-        },
+        }
     ];
     
 })();
